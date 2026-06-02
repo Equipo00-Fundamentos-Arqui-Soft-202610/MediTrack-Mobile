@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-class Screen extends StatelessWidget {
-  const Screen({super.key});
+
+class MedicationsScreen extends StatelessWidget {
+  const MedicationsScreen({super.key});
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Screen')),
-    body: const Center(child: Text('Screen')),
-  );
+        appBar: AppBar(title: const Text('Mis medicinas')),
+        body: const Center(child: Text('Medications')),
+      );
 }
