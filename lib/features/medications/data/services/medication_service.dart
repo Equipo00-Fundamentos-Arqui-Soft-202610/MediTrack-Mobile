@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../domain/models/medication_model.dart';
 
 class MedicationService {
-  static const String baseUrl = 'https://10.0.2.2:44338/api/v1';
+  static const String baseUrl = 'http://10.0.2.2:5000/api/v1';
 
   Future<List<MedicationModel>> getMedicationsByPatientId(int patientId) async {
     final uri = Uri.parse('$baseUrl/medications/patient/$patientId');
