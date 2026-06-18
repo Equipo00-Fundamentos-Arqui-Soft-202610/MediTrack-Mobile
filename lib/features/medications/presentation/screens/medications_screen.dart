@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:meditrack_mobile/features/medications/data/services/medication_service.dart';
 import 'package:meditrack_mobile/features/medications/domain/models/medication_model.dart';
+import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
 
 class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
@@ -18,21 +19,25 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
   void initState() {
     super.initState();
 
-    // Por ahora usamos patientId = 1 hasta integrar login real
     _medicationsFuture = _medicationService.getMedicationsByPatientId(1);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawerMenu(),
       backgroundColor: const Color(0xFFF7FBF9),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7FBF9),
         elevation: 0,
         centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Color(0xFF087D68)),
-          onPressed: () {},
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Color(0xFF087D68)),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
         ),
         title: const Text(
           'MediTrack',
@@ -232,7 +237,6 @@ class _MedicationCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2933),
                       ),
                     ),
                     Text(

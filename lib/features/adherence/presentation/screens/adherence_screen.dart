@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
 import '../../data/services/adherence_service.dart';
 
 class AdherenceScreen extends StatefulWidget {
@@ -49,6 +50,7 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawerMenu(),
       backgroundColor: const Color(0xFFF3FAF7),
       body: SafeArea(
         child: FutureBuilder<_AdherenceData>(
@@ -91,13 +93,10 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
       children: [
         _buildHeader(),
         const SizedBox(height: 24),
-
         _AdherenceSummaryCard(percentage: data.percentage),
         const SizedBox(height: 20),
-
         _WeeklyCard(items: data.recentCompliance),
         const SizedBox(height: 20),
-
         const Text(
           'Historial reciente',
           style: TextStyle(
@@ -107,7 +106,6 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
           ),
         ),
         const SizedBox(height: 12),
-
         if (data.recentCompliance.isEmpty)
           const _EmptyHistoryCard()
         else
@@ -122,7 +120,14 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(Icons.menu, color: Color(0xFF0F8B6E), size: 22),
+        Builder(
+          builder: (context) => IconButton(
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+            icon: const Icon(Icons.menu, color: Color(0xFF0F8B6E), size: 24),
+          ),
+        ),
         const Spacer(),
         const Text(
           'MediTrack',
@@ -274,7 +279,6 @@ class _WeeklyCard extends StatelessWidget {
       if (recordedAt == null) continue;
 
       final day = DateTime(recordedAt.year, recordedAt.month, recordedAt.day);
-
       final diff = today.difference(day).inDays;
 
       if (diff < 0 || diff > 6) continue;
