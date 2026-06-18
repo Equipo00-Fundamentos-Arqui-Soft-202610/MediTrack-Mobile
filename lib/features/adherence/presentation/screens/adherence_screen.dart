@@ -252,11 +252,7 @@ class _WeeklyCard extends StatelessWidget {
 
   Map<String, String> _buildWeekStatuses(List<dynamic> items) {
     final now = DateTime.now();
-    final monday = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
+    final today = DateTime(now.year, now.month, now.day);
 
     final result = {
       'L': 'pending',
@@ -278,12 +274,14 @@ class _WeeklyCard extends StatelessWidget {
       if (recordedAt == null) continue;
 
       final day = DateTime(recordedAt.year, recordedAt.month, recordedAt.day);
-      final diff = day.difference(monday).inDays;
+
+      final diff = today.difference(day).inDays;
 
       if (diff < 0 || diff > 6) continue;
 
       final status = item['status']?.toString() ?? 'pending';
-      result[keys[diff]] = status;
+
+      result[keys[6 - diff]] = status;
     }
 
     return result;
