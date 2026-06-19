@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'package:meditrack_mobile/core/notifications/local_notification_service.dart';
+import 'package:alarm/alarm.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Alarm.init();
+  await LocalNotificationService.instance.initialize();
+
   runApp(const MediTrackApp());
 }
 
