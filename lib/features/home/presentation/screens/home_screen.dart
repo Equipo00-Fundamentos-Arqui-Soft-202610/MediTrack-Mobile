@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:meditrack_mobile/core/alarms/medication_alarm_service.dart';
 import 'package:meditrack_mobile/features/home/data/models/next_dose_model.dart';
 import 'package:meditrack_mobile/features/home/data/services/home_service.dart';
+import 'package:meditrack_mobile/features/medications/data/services/medication_service.dart';
+import 'package:meditrack_mobile/features/reminders/application/services/medication_alarm_scheduler.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
-import 'package:meditrack_mobile/features/reminders/presentation/widgets/dose_reminder_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,6 +15,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeService _homeService = HomeService();
+  final MedicationService _medicationService = MedicationService();
+
+  late final MedicationAlarmScheduler _alarmScheduler =
+      MedicationAlarmScheduler(alarmService: MedicationAlarmService.instance);
 
   final int patientId = 1;
 
@@ -52,6 +58,18 @@ class _HomeScreenState extends State<HomeScreen> {
       loadedLowStock = await _homeService.getLowStockMedications(patientId);
     } catch (error) {
       debugPrint('Low stock error: $error');
+    }
+
+    try {
+      final medications = await _medicationService.getMedicationsByPatientId(
+        patientId,
+      );
+
+      await _alarmScheduler.scheduleMedicationAlarms(medications);
+
+      debugPrint('Medication alarms scheduled successfully');
+    } catch (error) {
+      debugPrint('Medication alarms error: $error');
     }
 
     setState(() {
@@ -244,52 +262,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-
-          const SizedBox(height: 12),
-
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: OutlinedButton(
-              onPressed: () {
-                showDoseReminderDialog(
-                  context: context,
-                  medicationName: 'Amoxicillin',
-                  dose: '500mg',
-                  onTakeDose: () {
-                    Navigator.pop(context);
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Dosis tomada')),
-                    );
-                  },
-                  onPostpone: () {
-                    Navigator.pop(context);
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Recordatorio pospuesto 10 min'),
-                      ),
-                    );
-                  },
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF07866D)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
-              child: const Text(
-                'Probar popup',
-                style: TextStyle(
-                  color: Color(0xFF07866D),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-
           const SizedBox(height: 14),
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,

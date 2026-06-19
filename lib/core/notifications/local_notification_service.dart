@@ -74,7 +74,7 @@ class LocalNotificationService {
 
     await _plugin.zonedSchedule(
       notificationId,
-      'Hora de tomar tu medicamento',
+      '¡Hora de tu dosis!',
       '$medicationName - $dose',
       scheduledDate,
       const NotificationDetails(
@@ -83,35 +83,70 @@ class LocalNotificationService {
           medicationChannelName,
           channelDescription: medicationChannelDescription,
           importance: Importance.max,
-          priority: Priority.high,
+          priority: Priority.max,
           playSound: true,
           enableVibration: true,
+          ongoing: true,
+          autoCancel: false,
           category: AndroidNotificationCategory.alarm,
           fullScreenIntent: true,
+          actions: [
+            AndroidNotificationAction(
+              'TAKE_DOSE',
+              'Tomar dosis',
+              showsUserInterface: true,
+              cancelNotification: true,
+            ),
+            AndroidNotificationAction(
+              'POSTPONE_10',
+              'Posponer 10 min',
+              showsUserInterface: true,
+              cancelNotification: true,
+            ),
+          ],
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
-      payload: medicationName,
+      payload: '$notificationId|$medicationName|$dose',
     );
   }
 
   Future<void> showTestMedicationNotification() async {
     await _plugin.show(
       9999,
-      'Prueba MediTrack',
-      'Esta es una notificación de prueba para medicamentos.',
+      '¡Hora de tu dosis!',
+      'Amoxicillin - 500mg',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           medicationChannelId,
           medicationChannelName,
           channelDescription: medicationChannelDescription,
           importance: Importance.max,
-          priority: Priority.high,
+          priority: Priority.max,
           playSound: true,
           enableVibration: true,
+          ongoing: true,
+          autoCancel: false,
+          category: AndroidNotificationCategory.alarm,
+          fullScreenIntent: true,
+          actions: [
+            AndroidNotificationAction(
+              'TAKE_DOSE',
+              'Tomar dosis',
+              showsUserInterface: true,
+              cancelNotification: true,
+            ),
+            AndroidNotificationAction(
+              'POSTPONE_10',
+              'Posponer 10 min',
+              showsUserInterface: true,
+              cancelNotification: true,
+            ),
+          ],
         ),
       ),
+      payload: '9999|Amoxicillin|500mg',
     );
   }
 
