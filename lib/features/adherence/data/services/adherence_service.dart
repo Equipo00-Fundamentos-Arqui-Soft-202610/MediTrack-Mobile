@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:meditrack_mobile/core/constants/app_constants.dart';
 
 class AdherenceService {
-  static const String followUpBaseUrl = 'http://10.0.2.2:5267/api/v1';
+  static const String followUpBaseUrl = AppConstants.followUpBaseUrl;
 
   Future<double> getAdherencePercentage(int patientId) async {
     final url = Uri.parse(

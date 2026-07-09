@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:meditrack_mobile/core/constants/app_constants.dart';
 
 import '../../domain/models/medication_model.dart';
 
 class MedicationService {
-  static const String baseUrl = 'http://10.0.2.2:5000/api/v1';
+  static const String baseUrl = AppConstants.treatmentBaseUrl;
 
   Future<List<MedicationModel>> getMedicationsByPatientId(int patientId) async {
     final uri = Uri.parse('$baseUrl/medications/patient/$patientId');

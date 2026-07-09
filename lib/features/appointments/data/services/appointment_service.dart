@@ -1,10 +1,11 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:meditrack_mobile/core/constants/app_constants.dart';
 import 'package:meditrack_mobile/features/appointments/domain/models/appointment_model.dart';
 
 class AppointmentService {
-  static const String baseUrl = 'http://10.0.2.2:5268/api/v1';
+  static const String baseUrl = AppConstants.appointmentsBaseUrl;
 
   Future<List<AppointmentModel>> getAppointmentsByPatientId(
     int patientId,
