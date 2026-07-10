@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:meditrack_mobile/core/network/api_client.dart';
 import 'package:meditrack_mobile/core/network/api_exception.dart';
+import 'package:meditrack_mobile/core/notifications/push_notification_service.dart';
 import 'package:meditrack_mobile/core/session/jwt_utils.dart';
 import 'package:meditrack_mobile/core/session/session_storage.dart';
 import 'package:meditrack_mobile/features/auth/data/services/auth_service.dart';
@@ -142,6 +143,8 @@ class SessionController extends ChangeNotifier {
     if (restored != null && !restored.isPaciente) {
       await _clearLocalSession();
       blockedMessage = patientOnlyMessage;
+    } else if (restored?.patientId != null) {
+      await PushNotificationService.instance.subscribeToPatientTopic(restored!.patientId!);
     }
 
     _isRestoring = false;
@@ -251,6 +254,9 @@ class SessionController extends ChangeNotifier {
     ApiClient.instance.setToken(session.token);
     await _storage.save(token: session.token, user: session.toStorageJson());
     _current = session;
+    if (session.patientId != null) {
+      await PushNotificationService.instance.subscribeToPatientTopic(session.patientId!);
+    }
     notifyListeners();
   }
 

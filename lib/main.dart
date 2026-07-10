@@ -7,6 +7,7 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/network/api_client.dart';
 import 'core/session/session_controller.dart';
+import 'firebase_options.dart';
 import 'package:meditrack_mobile/core/notifications/local_notification_service.dart';
 import 'package:meditrack_mobile/core/notifications/push_notification_service.dart';
 import 'package:alarm/alarm.dart';

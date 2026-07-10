@@ -1,5 +1,4 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:meditrack_mobile/core/constants/app_constants.dart';
 import 'package:meditrack_mobile/core/notifications/local_notification_service.dart';
 
 /// Maneja la suscripción al topic de FCM del paciente (CON-05) y la
@@ -19,11 +18,19 @@ class PushNotificationService {
       sound: true,
     );
 
-    // Debe coincidir con `FcmTopicPrefix` + PatientId del backend
-    // (ReminderNotificationOptions.cs: "patient_" + reminder.PatientId).
-    await _messaging.subscribeToTopic('patient_${AppConstants.patientId}');
-
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+  }
+
+  /// Se suscribe al topic del paciente autenticado. Debe llamarse con el
+  /// `patientId` real (SessionController), nunca un valor fijo, ya que debe
+  /// coincidir con `FcmTopicPrefix` + PatientId del backend
+  /// (ReminderNotificationOptions.cs: "patient_" + reminder.PatientId).
+  Future<void> subscribeToPatientTopic(int patientId) {
+    return _messaging.subscribeToTopic('patient_$patientId');
+  }
+
+  Future<void> unsubscribeFromPatientTopic(int patientId) {
+    return _messaging.unsubscribeFromTopic('patient_$patientId');
   }
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
