@@ -112,6 +112,32 @@ class LocalNotificationService {
     );
   }
 
+  /// Muestra de inmediato una notificación con contenido arbitrario. Se usa
+  /// para presentar los pushes de FCM que llegan con la app en foreground,
+  /// ya que en ese estado FCM no los muestra automáticamente.
+  Future<void> showImmediateNotification({
+    required String title,
+    required String body,
+    int notificationId = 0,
+  }) async {
+    await _plugin.show(
+      notificationId,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          medicationChannelId,
+          medicationChannelName,
+          channelDescription: medicationChannelDescription,
+          importance: Importance.max,
+          priority: Priority.max,
+          playSound: true,
+          enableVibration: true,
+        ),
+      ),
+    );
+  }
+
   Future<void> showTestMedicationNotification() async {
     await _plugin.show(
       9999,
