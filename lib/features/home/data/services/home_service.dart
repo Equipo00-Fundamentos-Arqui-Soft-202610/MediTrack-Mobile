@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:meditrack_mobile/core/constants/app_constants.dart';
 import 'package:meditrack_mobile/core/network/api_client.dart';
@@ -50,6 +52,48 @@ class HomeService {
           'offlineRecordedAt': null,
         },
       );
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  /// Sube el video de evidencia de una dosis (flujo de validación humana —
+  /// MediTrack AI Validator Prototype). El backend crea/actualiza el
+  /// cumplimiento en estado PendingValidation y devuelve su id.
+  Future<int> uploadComplianceVideo({
+    required int doseScheduleId,
+    required File videoFile,
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'doseScheduleId': doseScheduleId,
+        'video': await MultipartFile.fromFile(videoFile.path),
+      });
+
+      final response = await _dio.post(
+        '${AppConstants.followUpBaseUrl}/compliance/video',
+        data: formData,
+        onSendProgress: onSendProgress,
+        options: Options(
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+
+      return response.data['complianceId'] as int;
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  /// Polling de estado mientras se espera validación.
+  Future<Map<String, dynamic>> getComplianceStatus(int complianceId) async {
+    try {
+      final response = await _dio.get(
+        '${AppConstants.followUpBaseUrl}/compliance/$complianceId/status',
+      );
+      return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
       throw mapDioException(e);
     }

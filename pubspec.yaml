@@ -53,7 +53,13 @@ dependencies:
   intl: ^0.20.2
   
 
+  # Captura de video de evidencia (Tomar dosis): pickVideo(source: camera) cubre
+  # la grabación, sin agregar el paquete `camera`.
   image_picker: ^1.1.2
+
+  # Solo para la previsualización del video grabado antes de enviarlo — no hay
+  # forma de reproducir video con image_picker por sí solo.
+  video_player: ^2.9.2
 
   # Sesión / almacenamiento seguro del token JWT
   flutter_secure_storage: ^9.2.2

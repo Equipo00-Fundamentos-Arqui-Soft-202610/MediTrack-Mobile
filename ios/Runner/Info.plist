@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>MediTrack necesita la cámara para grabar el video de evidencia al tomar tu dosis.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MediTrack necesita el micrófono para grabar el video de evidencia al tomar tu dosis.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

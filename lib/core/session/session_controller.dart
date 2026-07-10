@@ -193,4 +193,12 @@ class SessionController extends ChangeNotifier {
     await _clearLocalSession();
     notifyListeners();
   }
+
+  /// Solo para tests: fija una sesión directamente sin pasar por red/storage.
+  @visibleForTesting
+  void debugSetSession(UserSession session) {
+    _current = session;
+    _isRestoring = false;
+    notifyListeners();
+  }
 }

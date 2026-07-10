@@ -320,8 +320,11 @@ class _DayStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTaken = status == 'taken';
-    final isSkipped = status == 'skipped';
+    // "approved" (evidencia validada) marca el día como cumplido igual que el
+    // "taken" legado; "rejected" se muestra igual que "skipped" (no cumplido).
+    // "pendingvalidation" queda en el estado neutro por defecto (sin marcar).
+    final isTaken = status == 'taken' || status == 'approved';
+    final isSkipped = status == 'skipped' || status == 'rejected';
 
     final bgColor = isTaken
         ? const Color(0xFF00796B)
@@ -364,7 +367,7 @@ class _HistoryItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = item['status']?.toString() ?? 'pending';
-    final isTaken = status == 'taken';
+    final visual = _complianceVisual(status);
 
     final recordedAt = DateTime.tryParse(item['recordedAt']?.toString() ?? '');
 
@@ -372,19 +375,19 @@ class _HistoryItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: _cardDecoration(
-        backgroundColor: isTaken ? Colors.white : const Color(0xFFFFEEEE),
-        borderColor: isTaken ? null : const Color(0xFFFFCDD2),
+        backgroundColor: visual.cardBackground,
+        borderColor: visual.cardBorder,
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 21,
-            backgroundColor: isTaken ? const Color(0xFFEAF2EF) : Colors.white,
+            backgroundColor: visual.avatarOuterBg,
             child: CircleAvatar(
               radius: 10,
-              backgroundColor: isTaken ? const Color(0xFF2E7D32) : Colors.red,
+              backgroundColor: visual.avatarInnerBg,
               child: Icon(
-                isTaken ? Icons.check : Icons.close,
+                visual.icon,
                 size: 14,
                 color: Colors.white,
               ),
@@ -463,23 +466,112 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTaken = status == 'taken';
+    final visual = _complianceVisual(status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: isTaken ? const Color(0xFFE8F5E9) : const Color(0xFFFFDAD6),
+        color: visual.badgeBackground,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        isTaken ? 'Tomado' : 'Omitido',
+        visual.label,
         style: TextStyle(
-          color: isTaken ? const Color(0xFF2E7D32) : Colors.red,
+          color: visual.badgeText,
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),
       ),
     );
+  }
+}
+
+/// Mapea el `status` real de FollowUp-Service (incluye ahora el flujo de
+/// validación de evidencia en video) a la representación visual del
+/// historial: los estados legados "taken"/"skipped" se mantienen tal cual;
+/// "approved" se muestra como completada (cuenta como cumplida, igual que
+/// "taken"); "pendingvalidation" y "rejected" son nuevos y no marcan el día
+/// como cumplido.
+class _ComplianceVisual {
+  final String label;
+  final Color badgeBackground;
+  final Color badgeText;
+  final Color cardBackground;
+  final Color? cardBorder;
+  final Color avatarOuterBg;
+  final Color avatarInnerBg;
+  final IconData icon;
+
+  const _ComplianceVisual({
+    required this.label,
+    required this.badgeBackground,
+    required this.badgeText,
+    required this.cardBackground,
+    required this.cardBorder,
+    required this.avatarOuterBg,
+    required this.avatarInnerBg,
+    required this.icon,
+  });
+}
+
+_ComplianceVisual _complianceVisual(String status) {
+  switch (status.toLowerCase()) {
+    case 'taken':
+      return const _ComplianceVisual(
+        label: 'Tomado',
+        badgeBackground: Color(0xFFE8F5E9),
+        badgeText: Color(0xFF2E7D32),
+        cardBackground: Colors.white,
+        cardBorder: null,
+        avatarOuterBg: Color(0xFFEAF2EF),
+        avatarInnerBg: Color(0xFF2E7D32),
+        icon: Icons.check,
+      );
+    case 'approved':
+      return const _ComplianceVisual(
+        label: 'Completada',
+        badgeBackground: Color(0xFFE8F5E9),
+        badgeText: Color(0xFF2E7D32),
+        cardBackground: Colors.white,
+        cardBorder: null,
+        avatarOuterBg: Color(0xFFEAF2EF),
+        avatarInnerBg: Color(0xFF2E7D32),
+        icon: Icons.check,
+      );
+    case 'pendingvalidation':
+      return const _ComplianceVisual(
+        label: 'En validación',
+        badgeBackground: Color(0xFFFFF3E0),
+        badgeText: Color(0xFFB35B00),
+        cardBackground: Color(0xFFFFFBF2),
+        cardBorder: Color(0xFFFFE0B2),
+        avatarOuterBg: Color(0xFFFFF3E0),
+        avatarInnerBg: Color(0xFFB35B00),
+        icon: Icons.hourglass_top,
+      );
+    case 'rejected':
+      return const _ComplianceVisual(
+        label: 'Rechazada',
+        badgeBackground: Color(0xFFFFDAD6),
+        badgeText: Colors.red,
+        cardBackground: Color(0xFFFFEEEE),
+        cardBorder: Color(0xFFFFCDD2),
+        avatarOuterBg: Colors.white,
+        avatarInnerBg: Colors.red,
+        icon: Icons.close,
+      );
+    case 'skipped':
+    default:
+      return const _ComplianceVisual(
+        label: 'Omitido',
+        badgeBackground: Color(0xFFFFDAD6),
+        badgeText: Colors.red,
+        cardBackground: Color(0xFFFFEEEE),
+        cardBorder: Color(0xFFFFCDD2),
+        avatarOuterBg: Colors.white,
+        avatarInnerBg: Colors.red,
+        icon: Icons.close,
+      );
   }
 }
 

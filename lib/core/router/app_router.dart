@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/home/data/models/next_dose_model.dart';
+import '../../features/home/presentation/screens/dose_evidence_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/medications/presentation/screens/medications_screen.dart';
 import '../../features/adherence/presentation/screens/adherence_screen.dart';
@@ -31,6 +33,11 @@ GoRouter buildRouter(SessionController session) {
     routes: [
       GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
       GoRoute(path: '/register', builder: (c, s) => const RegisterScreen()),
+      // Pantalla completa (sin bottom nav): captura/envío de evidencia en video.
+      GoRoute(
+        path: '/dose-evidence',
+        builder: (c, s) => DoseEvidenceScreen(dose: s.extra as NextDoseModel),
+      ),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
         routes: [
