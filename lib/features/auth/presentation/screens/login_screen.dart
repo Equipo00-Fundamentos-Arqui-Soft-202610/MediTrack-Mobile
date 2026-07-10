@@ -21,6 +21,18 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Si `restoreSession` cerró una sesión no-paciente al arrancar la app,
+    // el mensaje queda pendiente aquí hasta que Login se muestre.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final blocked = context.read<SessionController>().consumeBlockedMessage();
+      if (blocked != null) setState(() => _errorMessage = blocked);
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -41,6 +53,8 @@ class _LoginScreenState extends State<LoginScreen> {
             password: _passwordController.text,
           );
       // El redirect de go_router reacciona a SessionController y navega a Home.
+    } on NotAPatientException catch (e) {
+      setState(() => _errorMessage = e.message);
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {

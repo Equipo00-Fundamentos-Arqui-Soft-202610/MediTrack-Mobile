@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:meditrack_mobile/core/constants/app_constants.dart';
 import 'package:meditrack_mobile/core/network/api_client.dart';
 import 'package:meditrack_mobile/core/network/api_exception.dart';
@@ -97,5 +100,48 @@ class AuthService {
     } on DioException catch (e) {
       throw mapDioException(e);
     }
+  }
+
+  /// `POST /identity/api/v1/profile/photo` (multipart/form-data, campo
+  /// `photo`): sube o reemplaza la foto de perfil. El backend resuelve al
+  /// dueño desde el JWT y devuelve el perfil actualizado.
+  Future<Map<String, dynamic>> uploadProfilePhoto(File photoFile) async {
+    try {
+      final formData = FormData.fromMap({
+        'photo': await MultipartFile.fromFile(photoFile.path),
+      });
+
+      final response = await _dio.post(
+        '${AppConstants.identityBaseUrl}/profile/photo',
+        data: formData,
+        options: Options(
+          sendTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      _debugLogFailure('POST /profile/photo', e);
+      throw mapDioException(e);
+    }
+  }
+
+  /// `DELETE /identity/api/v1/profile/photo`: elimina la foto de perfil
+  /// actual (si existe) y devuelve el perfil actualizado.
+  Future<Map<String, dynamic>> deleteProfilePhoto() async {
+    try {
+      final response = await _dio.delete('${AppConstants.identityBaseUrl}/profile/photo');
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      _debugLogFailure('DELETE /profile/photo', e);
+      throw mapDioException(e);
+    }
+  }
+
+  void _debugLogFailure(String endpoint, DioException e) {
+    debugPrint(
+      'AuthService $endpoint failed: status=${e.response?.statusCode} body=${e.response?.data}',
+    );
   }
 }

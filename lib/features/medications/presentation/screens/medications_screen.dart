@@ -5,6 +5,7 @@ import 'package:meditrack_mobile/core/session/session_controller.dart';
 import 'package:meditrack_mobile/features/medications/data/services/medication_service.dart';
 import 'package:meditrack_mobile/features/medications/domain/models/medication_model.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
+import 'package:meditrack_mobile/shared/widgets/user_avatar.dart';
 
 class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
@@ -55,10 +56,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 16),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=47'),
-            ),
+            child: UserAvatar(),
           ),
         ],
       ),

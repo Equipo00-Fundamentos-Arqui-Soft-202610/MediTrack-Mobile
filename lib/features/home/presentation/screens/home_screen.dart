@@ -13,6 +13,7 @@ import 'package:meditrack_mobile/features/home/domain/dose_visual_state.dart';
 import 'package:meditrack_mobile/features/medications/data/services/medication_service.dart';
 import 'package:meditrack_mobile/features/reminders/application/services/medication_alarm_scheduler.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
+import 'package:meditrack_mobile/shared/widgets/user_avatar.dart';
 
 class HomeScreen extends StatefulWidget {
   /// Inyectables solo para tests (widget tests con fakes); en producción
@@ -302,14 +303,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             const Spacer(),
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: const Color(0xFFE1F3EE),
-              child: Text(
-                userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                style: const TextStyle(color: Color(0xFF07866D), fontWeight: FontWeight.bold),
-              ),
-            ),
+            const UserAvatar(),
           ],
         ),
         const SizedBox(height: 26),

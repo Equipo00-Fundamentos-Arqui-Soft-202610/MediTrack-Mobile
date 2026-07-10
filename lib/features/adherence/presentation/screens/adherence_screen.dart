@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:meditrack_mobile/core/network/api_exception.dart';
 import 'package:meditrack_mobile/core/session/session_controller.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
+import 'package:meditrack_mobile/shared/widgets/user_avatar.dart';
 import '../../data/services/adherence_service.dart';
 
 class AdherenceScreen extends StatefulWidget {
@@ -158,16 +159,7 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
           ),
         ),
         const Spacer(),
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: const Color(0xFFE1F3EE),
-          child: ClipOval(
-            child: Image.network(
-              'https://i.pravatar.cc/100',
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
+        const UserAvatar(),
       ],
     );
   }

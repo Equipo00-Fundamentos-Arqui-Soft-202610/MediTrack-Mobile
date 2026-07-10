@@ -48,6 +48,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
       // Registro devuelve token: sesión queda iniciada y el redirect de
       // go_router navega a Home automáticamente.
+    } on NotAPatientException catch (e) {
+      setState(() => _errorMessage = e.message);
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {
