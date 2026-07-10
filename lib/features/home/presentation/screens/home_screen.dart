@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-
+import 'package:meditrack_mobile/core/alarms/medication_alarm_service.dart';
 import 'package:meditrack_mobile/features/home/data/models/next_dose_model.dart';
 import 'package:meditrack_mobile/features/home/data/services/home_service.dart';
+import 'package:meditrack_mobile/features/medications/data/services/medication_service.dart';
+import 'package:meditrack_mobile/features/reminders/application/services/medication_alarm_scheduler.dart';
+import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +15,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final HomeService _homeService = HomeService();
+  final MedicationService _medicationService = MedicationService();
+
+  late final MedicationAlarmScheduler _alarmScheduler =
+      MedicationAlarmScheduler(alarmService: MedicationAlarmService.instance);
 
   final int patientId = 1;
 
@@ -53,6 +60,18 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('Low stock error: $error');
     }
 
+    try {
+      final medications = await _medicationService.getMedicationsByPatientId(
+        patientId,
+      );
+
+      await _alarmScheduler.scheduleMedicationAlarms(medications);
+
+      debugPrint('Medication alarms scheduled successfully');
+    } catch (error) {
+      debugPrint('Medication alarms error: $error');
+    }
+
     setState(() {
       nextDose = loadedDose;
       adherencePercentage = loadedAdherence;
@@ -89,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawerMenu(),
       backgroundColor: const Color(0xFFF3FAF7),
       body: SafeArea(
         child: RefreshIndicator(
@@ -98,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeader(),
               const SizedBox(height: 24),
-
               if (isLoading)
                 const Center(child: CircularProgressIndicator())
               else ...[
@@ -124,7 +143,18 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            const Icon(Icons.menu, color: Color(0xFF0F8B6E), size: 22),
+            Builder(
+              builder: (context) => IconButton(
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+                icon: const Icon(
+                  Icons.menu,
+                  color: Color(0xFF0F8B6E),
+                  size: 24,
+                ),
+              ),
+            ),
             const Spacer(),
             const Text(
               'MediTrack',
@@ -299,11 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Text(
             'Progreso del\ntratamiento',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1F2937),
-            ),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           const Text(
@@ -354,11 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? 'Stock bajo:\n${medication['name']}'
                 : 'Stock\nsuficiente',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1F2937),
-            ),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -367,10 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: hasLowStock ? () {} : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFB65A45),
-                disabledBackgroundColor: const Color(0xFFD1D5DB),
                 foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 22),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),

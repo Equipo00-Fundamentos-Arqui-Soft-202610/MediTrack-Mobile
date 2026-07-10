@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:meditrack_mobile/core/constants/app_constants.dart';
 
 import '../models/next_dose_model.dart';
 
 class HomeService {
-  static const String followUpBaseUrl = 'http://10.0.2.2:5267/api/v1';
-  static const String treatmentBaseUrl = 'http://10.0.2.2:5000/api/v1';
+  static const String followUpBaseUrl = AppConstants.followUpBaseUrl;
+  static const String treatmentBaseUrl = AppConstants.treatmentBaseUrl;
 
   Future<NextDoseModel?> getNextDose(int patientId) async {
     final url = Uri.parse(
@@ -79,7 +80,9 @@ class HomeService {
   }
 
   Future<List<dynamic>> getLowStockMedications(int patientId) async {
-    final url = Uri.parse('$treatmentBaseUrl/medications/patient/$patientId');
+    // Treatment-service expone patientId como query param, no como segmento
+    // de ruta (GetMedicationsByPatientId([FromQuery] int patientId)).
+    final url = Uri.parse('$treatmentBaseUrl/medications?patientId=$patientId');
 
     final response = await http.get(url);
 
