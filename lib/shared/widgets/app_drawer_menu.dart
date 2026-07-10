@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:meditrack_mobile/core/session/session_controller.dart';
 
 class AppDrawerMenu extends StatelessWidget {
   const AppDrawerMenu({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<SessionController>();
+    final user = session.current;
+
     return Drawer(
       backgroundColor: const Color(0xFFF6FAF8),
       child: SafeArea(
@@ -17,22 +22,28 @@ class AppDrawerMenu extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 28,
-                    backgroundImage: NetworkImage(
-                      'https://i.pravatar.cc/150?img=47',
+                    backgroundColor: const Color(0xFFD9EAF6),
+                    child: Text(
+                      (user?.nombre.isNotEmpty == true ? user!.nombre[0] : '?').toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF27445C),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Susana Perez',
-                        style: TextStyle(
+                        user?.nombre ?? 'Invitado',
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text('Paciente'),
+                      Text(user?.rol ?? ''),
                     ],
                   ),
                 ],
@@ -59,13 +70,22 @@ class AppDrawerMenu extends StatelessWidget {
               title: 'Citas Médicas',
               routeName: '/appointments',
             ),
+            _DrawerItem(
+              icon: Icons.person_outline,
+              title: 'Perfil',
+              routeName: '/profile',
+            ),
 
             const Spacer(),
 
             Padding(
               padding: const EdgeInsets.all(24),
               child: OutlinedButton.icon(
-                onPressed: () {},
+                onPressed: () async {
+                  final router = GoRouter.of(context);
+                  await context.read<SessionController>().logout();
+                  router.go('/login');
+                },
                 icon: const Icon(Icons.logout, color: Colors.red),
                 label: const Text(
                   'Cerrar Sesión',
@@ -93,7 +113,7 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentRoute = ModalRoute.of(context)?.settings.name;
+    final currentRoute = GoRouterState.of(context).matchedLocation;
     final isSelected = currentRoute == routeName;
 
     return Container(

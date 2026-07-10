@@ -1,33 +1,55 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 
+import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/medications/presentation/screens/medications_screen.dart';
 import '../../features/adherence/presentation/screens/adherence_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/appointments/presentation/screens/appointments_screen.dart';
+import '../session/session_controller.dart';
 
-final GoRouter appRouter = GoRouter(
-  initialLocation: '/',
-  routes: [
-    ShellRoute(
-      builder: (context, state, child) => MainShell(child: child),
-      routes: [
-        GoRoute(path: '/', builder: (c, s) => const HomeScreen()),
-        GoRoute(
-          path: '/medications',
-          builder: (c, s) => const MedicationsScreen(),
-        ),
-        GoRoute(path: '/adherence', builder: (c, s) => const AdherenceScreen()),
-        GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
-        GoRoute(
-          path: '/appointments',
-          builder: (c, s) => const AppointmentsScreen(),
-        ),
-      ],
-    ),
-  ],
-);
+const _publicRoutes = {'/login', '/register'};
+
+/// Construye el router con `redirect` atado a [session] (vía
+/// `refreshListenable`): sin sesión válida siempre termina en `/login`; con
+/// sesión, `/login` y `/register` redirigen a Home.
+GoRouter buildRouter(SessionController session) {
+  return GoRouter(
+    initialLocation: '/',
+    refreshListenable: session,
+    redirect: (context, state) {
+      if (session.isRestoring) return null;
+
+      final goingToPublicRoute = _publicRoutes.contains(state.matchedLocation);
+
+      if (!session.isAuthenticated && !goingToPublicRoute) return '/login';
+      if (session.isAuthenticated && goingToPublicRoute) return '/';
+      return null;
+    },
+    routes: [
+      GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (c, s) => const RegisterScreen()),
+      ShellRoute(
+        builder: (context, state, child) => MainShell(child: child),
+        routes: [
+          GoRoute(path: '/', builder: (c, s) => const HomeScreen()),
+          GoRoute(
+            path: '/medications',
+            builder: (c, s) => const MedicationsScreen(),
+          ),
+          GoRoute(path: '/adherence', builder: (c, s) => const AdherenceScreen()),
+          GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
+          GoRoute(
+            path: '/appointments',
+            builder: (c, s) => const AppointmentsScreen(),
+          ),
+        ],
+      ),
+    ],
+  );
+}
 
 class MainShell extends StatefulWidget {
   final Widget child;

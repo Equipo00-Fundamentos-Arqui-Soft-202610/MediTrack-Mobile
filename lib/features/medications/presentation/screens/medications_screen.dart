@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:meditrack_mobile/core/network/api_exception.dart';
+import 'package:meditrack_mobile/core/session/session_controller.dart';
 import 'package:meditrack_mobile/features/medications/data/services/medication_service.dart';
 import 'package:meditrack_mobile/features/medications/domain/models/medication_model.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
@@ -19,7 +22,10 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
   void initState() {
     super.initState();
 
-    _medicationsFuture = _medicationService.getMedicationsByPatientId(1);
+    final patientId = context.read<SessionController>().patientId;
+    _medicationsFuture = patientId == null
+        ? Future.error(ApiException(null, 'No se pudo determinar tu perfil de paciente.'))
+        : _medicationService.getMedicationsByPatientId(patientId);
   }
 
   @override
@@ -69,9 +75,13 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
               }
 
               if (snapshot.hasError) {
+                final error = snapshot.error;
+                final message = error is ApiException
+                    ? error.message
+                    : 'No se pudieron cargar los medicamentos.';
                 return Center(
                   child: Text(
-                    'No se pudieron cargar los medicamentos.\n${snapshot.error}',
+                    message,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Color(0xFFB42318),

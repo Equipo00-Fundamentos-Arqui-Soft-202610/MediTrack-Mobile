@@ -1,34 +1,33 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:meditrack_mobile/core/constants/app_constants.dart';
+import 'package:meditrack_mobile/core/network/api_client.dart';
+import 'package:meditrack_mobile/core/network/api_exception.dart';
 
 import '../../domain/models/medication_model.dart';
 
 class MedicationService {
-  static const String baseUrl = AppConstants.treatmentBaseUrl;
+  final Dio _dio = ApiClient.instance.dio;
 
+  /// Contrato real confirmado en Treatment-service:
+  /// `GET /api/v1/medications?patientId=` (no `/medications/patient/{id}`).
+  /// El endpoint devuelve TODOS los medicamentos del paciente (activos e
+  /// inactivos/cancelados) — se filtra `isActive` aquí en el cliente.
   Future<List<MedicationModel>> getMedicationsByPatientId(int patientId) async {
-    final uri = Uri.parse('$baseUrl/medications/patient/$patientId');
+    try {
+      final response = await _dio.get(
+        '${AppConstants.treatmentBaseUrl}/medications',
+        queryParameters: {'patientId': patientId},
+      );
 
-    final client = HttpClient()
-      ..badCertificateCallback =
-          (X509Certificate cert, String host, int port) => true;
+      final List<dynamic> jsonList = response.data as List<dynamic>;
 
-    final request = await client.getUrl(uri);
-    final response = await request.close();
-
-    final responseBody = await response.transform(utf8.decoder).join();
-
-    if (response.statusCode != 200) {
-      throw Exception('Error al obtener medicamentos: $responseBody');
+      return jsonList
+          .map((json) => MedicationModel.fromJson(json as Map<String, dynamic>))
+          .where((medication) => medication.isActive)
+          .toList();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return [];
+      throw mapDioException(e);
     }
-
-    final List<dynamic> jsonList = json.decode(responseBody);
-
-    return jsonList
-        .map((json) => MedicationModel.fromJson(json as Map<String, dynamic>))
-        .toList();
   }
 }

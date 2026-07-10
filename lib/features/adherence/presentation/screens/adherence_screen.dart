@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:meditrack_mobile/core/network/api_exception.dart';
+import 'package:meditrack_mobile/core/session/session_controller.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
 import '../../data/services/adherence_service.dart';
 
@@ -12,39 +15,61 @@ class AdherenceScreen extends StatefulWidget {
 class _AdherenceScreenState extends State<AdherenceScreen> {
   final AdherenceService _service = AdherenceService();
 
-  static const int patientId = 1;
-
-  late Future<_AdherenceData> _future;
+  bool _isLoading = true;
+  String? _errorMessage;
+  _AdherenceData _data = _AdherenceData.empty();
 
   @override
   void initState() {
     super.initState();
-    _future = _loadData();
+    _loadData();
   }
 
-  Future<_AdherenceData> _loadData() async {
-    final percentage = await _service.getAdherencePercentage(patientId);
+  Future<void> _loadData() async {
+    final patientId = context.read<SessionController>().patientId;
+    if (patientId == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No se pudo determinar tu perfil de paciente.';
+      });
+      return;
+    }
 
-    final recentCompliance = await _service.getRecentCompliance(
-      patientId: patientId,
-      limit: 10,
-    );
-
-    final medications = await _service.getMedications(patientId);
-
-    return _AdherenceData(
-      percentage: percentage,
-      recentCompliance: recentCompliance,
-      medications: medications,
-    );
-  }
-
-  Future<void> _refresh() async {
     setState(() {
-      _future = _loadData();
+      _isLoading = true;
+      _errorMessage = null;
     });
 
-    await _future;
+    try {
+      // Se piden en paralelo: si una falla no debe ocultar las otras dos.
+      final results = await Future.wait([
+        _service.getAdherencePercentage(patientId),
+        _service.getRecentCompliance(patientId: patientId, limit: 10),
+        _service.getMedications(patientId),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _data = _AdherenceData(
+          percentage: results[0] as double,
+          recentCompliance: results[1] as List<dynamic>,
+          medications: results[2] as List<dynamic>,
+        );
+        _isLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'No se pudo cargar tu adherencia. Intenta de nuevo.';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -53,25 +78,20 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
       drawer: const AppDrawerMenu(),
       backgroundColor: const Color(0xFFF3FAF7),
       body: SafeArea(
-        child: FutureBuilder<_AdherenceData>(
-          future: _future,
-          builder: (context, snapshot) {
-            return RefreshIndicator(
-              onRefresh: _refresh,
-              child: _buildBody(snapshot),
-            );
-          },
+        child: RefreshIndicator(
+          onRefresh: _loadData,
+          child: _buildBody(),
         ),
       ),
     );
   }
 
-  Widget _buildBody(AsyncSnapshot<_AdherenceData> snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
+  Widget _buildBody() {
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (snapshot.hasError) {
+    if (_errorMessage != null) {
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -79,14 +99,14 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
           const Icon(Icons.error_outline, size: 48),
           const SizedBox(height: 16),
           Text(
-            'No se pudo cargar la adherencia.\n${snapshot.error}',
+            'No se pudo cargar la adherencia.\n$_errorMessage',
             textAlign: TextAlign.center,
           ),
         ],
       );
     }
 
-    final data = snapshot.data ?? _AdherenceData.empty();
+    final data = _data;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
