@@ -80,7 +80,9 @@ class HomeService {
   }
 
   Future<List<dynamic>> getLowStockMedications(int patientId) async {
-    final url = Uri.parse('$treatmentBaseUrl/medications/patient/$patientId');
+    // Treatment-service expone patientId como query param, no como segmento
+    // de ruta (GetMedicationsByPatientId([FromQuery] int patientId)).
+    final url = Uri.parse('$treatmentBaseUrl/medications?patientId=$patientId');
 
     final response = await http.get(url);
 

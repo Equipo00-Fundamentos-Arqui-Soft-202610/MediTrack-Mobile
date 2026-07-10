@@ -2,8 +2,7 @@ class AppConstants {
   static const int patientId = 1;
 
   // Centralized MediTrack API Gateway base URL.
-  // Android Emulator uses 10.0.2.2 as the alias for the host machine's localhost.
-  static const String gatewayBaseUrl = 'http://10.0.2.2:5000';
+  static const String gatewayBaseUrl = 'https://meditrack-gateway.onrender.com';
 
   static const String baseUrl = gatewayBaseUrl;
 
