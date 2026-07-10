@@ -7,6 +7,8 @@ class UserSession {
   final String email;
   final String rol;
   final String? institucion;
+  final String? phoneNumber;
+  final String? profilePhotoUrl;
   final int? patientId;
 
   const UserSession({
@@ -16,6 +18,8 @@ class UserSession {
     required this.email,
     required this.rol,
     required this.institucion,
+    required this.phoneNumber,
+    required this.profilePhotoUrl,
     required this.patientId,
   });
 
@@ -25,6 +29,8 @@ class UserSession {
     String? nombre,
     String? email,
     String? institucion,
+    String? phoneNumber,
+    String? profilePhotoUrl,
   }) {
     return UserSession(
       token: token,
@@ -33,6 +39,8 @@ class UserSession {
       email: email ?? this.email,
       rol: rol,
       institucion: institucion ?? this.institucion,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
       patientId: patientId,
     );
   }
@@ -43,6 +51,8 @@ class UserSession {
         'email': email,
         'rol': rol,
         'institucion': institucion,
+        'phoneNumber': phoneNumber,
+        'profilePhotoUrl': profilePhotoUrl,
         'patientId': patientId,
       };
 
@@ -54,6 +64,8 @@ class UserSession {
       email: json['email'] as String,
       rol: json['rol'] as String,
       institucion: json['institucion'] as String?,
+      phoneNumber: json['phoneNumber'] as String?,
+      profilePhotoUrl: json['profilePhotoUrl'] as String?,
       patientId: json['patientId'] as int?,
     );
   }

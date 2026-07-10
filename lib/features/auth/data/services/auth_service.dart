@@ -59,19 +59,41 @@ class AuthService {
     }
   }
 
-  /// Solo nombre/email/institución son editables: es lo único que expone
-  /// `ProfileUpdateRequest` en Identity-Service (no hay teléfono ni foto).
   Future<Map<String, dynamic>> updateProfile({
     String? nombre,
     String? email,
     String? institucion,
+    String? phoneNumber,
+    String? profilePhotoUrl,
   }) async {
     try {
       final response = await _dio.put(
         '${AppConstants.identityBaseUrl}/profile',
-        data: {'nombre': nombre, 'email': email, 'institucion': institucion},
+        data: {
+          'nombre': nombre,
+          'email': email,
+          'institucion': institucion,
+          'phoneNumber': phoneNumber,
+          'profilePhotoUrl': profilePhotoUrl,
+        },
       );
       return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  /// `PUT /identity/api/v1/profile/password`: valida la contraseña actual en
+  /// el backend antes de aplicar la nueva.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _dio.put(
+        '${AppConstants.identityBaseUrl}/profile/password',
+        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+      );
     } on DioException catch (e) {
       throw mapDioException(e);
     }

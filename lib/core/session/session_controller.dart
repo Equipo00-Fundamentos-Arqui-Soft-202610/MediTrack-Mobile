@@ -60,6 +60,8 @@ class SessionController extends ChangeNotifier {
       email: usuario['email'] as String,
       rol: usuario['rol'] as String,
       institucion: usuario['institucion'] as String?,
+      phoneNumber: usuario['phoneNumber'] as String?,
+      profilePhotoUrl: usuario['profilePhotoUrl'] as String?,
       patientId: _resolvePatientId(token, usuario),
     );
   }
@@ -88,6 +90,8 @@ class SessionController extends ChangeNotifier {
         email: profile['email'] as String,
         rol: profile['rol'] as String,
         institucion: profile['institucion'] as String?,
+        phoneNumber: profile['phoneNumber'] as String?,
+        profilePhotoUrl: profile['profilePhotoUrl'] as String?,
         patientId: storedUser['patientId'] as int?,
       );
     } on ApiException catch (e) {
@@ -110,31 +114,39 @@ class SessionController extends ChangeNotifier {
     await _persist(session);
   }
 
-  /// Registro (paciente o personal técnico según [rol]/[institucion]).
-  /// El backend devuelve token igual que en login, así que se auto-loguea.
+  /// MediTrack-Mobile es solo para pacientes: el rol siempre es "paciente",
+  /// sin excepción ni opción en la UI (no se registra personal técnico desde
+  /// esta app). El backend devuelve token igual que en login, así que se
+  /// auto-loguea tras registrarse.
   Future<void> register({
     required String nombre,
     required String email,
     required String password,
-    String rol = 'paciente',
-    String? institucion,
   }) async {
     final response = await _authService.register(
       nombre: nombre,
       email: email,
       password: password,
-      rol: rol,
-      institucion: institucion,
+      rol: 'paciente',
+      institucion: null,
     );
     final session = _buildSession(response);
     await _persist(session);
   }
 
-  Future<void> updateProfile({String? nombre, String? email, String? institucion}) async {
+  Future<void> updateProfile({
+    String? nombre,
+    String? email,
+    String? institucion,
+    String? phoneNumber,
+    String? profilePhotoUrl,
+  }) async {
     final updated = await _authService.updateProfile(
       nombre: nombre,
       email: email,
       institucion: institucion,
+      phoneNumber: phoneNumber,
+      profilePhotoUrl: profilePhotoUrl,
     );
     final current = _current;
     if (current == null) return;
@@ -146,10 +158,22 @@ class SessionController extends ChangeNotifier {
       email: updated['email'] as String,
       rol: updated['rol'] as String,
       institucion: updated['institucion'] as String?,
+      phoneNumber: updated['phoneNumber'] as String?,
+      profilePhotoUrl: updated['profilePhotoUrl'] as String?,
       patientId: current.patientId,
     );
     await _storage.save(token: current.token, user: _current!.toStorageJson());
     notifyListeners();
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _authService.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
   }
 
   Future<void> _persist(UserSession session) async {

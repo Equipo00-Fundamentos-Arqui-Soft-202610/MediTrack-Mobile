@@ -164,8 +164,8 @@ class _MedicationsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Medicamentos',
@@ -175,14 +175,21 @@ class _MedicationsHeader extends StatelessWidget {
             color: Color(0xFF1F2933),
           ),
         ),
-        TextButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.add_circle_outline, size: 18),
-          label: const Text('Agregar'),
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF087D68),
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+        const SizedBox(height: 6),
+        // La app mobile es solo para pacientes: los medicamentos/recetas los
+        // registra el personal médico (Treatment-Service), no hay flujo de
+        // creación desde aquí.
+        Row(
+          children: [
+            const Icon(Icons.info_outline, size: 15, color: Color(0xFF5F6C72)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Los medicamentos son registrados por el personal médico.',
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF5F6C72)),
+              ),
+            ),
+          ],
         ),
       ],
     );

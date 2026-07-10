@@ -4,11 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:meditrack_mobile/core/network/api_exception.dart';
 import 'package:meditrack_mobile/core/session/session_controller.dart';
 
-/// Identity-Service acepta Rol = "paciente" (default, IAM-RF1) o
-/// "Doctor"/"TechnicalStaff" con Institución (IAM-RF2), confirmado en
-/// AuthController.Register + AllowedRoles.
-const _staffRoles = ['Doctor', 'TechnicalStaff'];
-
+/// MediTrack-Mobile es exclusivamente para pacientes: este formulario solo
+/// crea cuentas con rol "paciente" (hardcodeado en SessionController.register).
+/// El registro de personal técnico/doctor no está disponible en esta app.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -21,11 +19,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _institucionController = TextEditingController();
 
   bool _isSubmitting = false;
-  bool _isStaff = false;
-  String _staffRole = _staffRoles.first;
   String? _errorMessage;
   bool _obscurePassword = true;
 
@@ -34,7 +29,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nombreController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _institucionController.dispose();
     super.dispose();
   }
 
@@ -51,8 +45,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             nombre: _nombreController.text.trim(),
             email: _emailController.text.trim(),
             password: _passwordController.text,
-            rol: _isStaff ? _staffRole : 'paciente',
-            institucion: _isStaff ? _institucionController.text.trim() : null,
           );
       // Registro devuelve token: sesión queda iniciada y el redirect de
       // go_router navega a Home automáticamente.
@@ -141,42 +133,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 8),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Soy personal técnico / doctor'),
-                  subtitle: const Text('Selecciona esto solo si trabajas en una institución médica'),
-                  value: _isStaff,
-                  onChanged: (value) => setState(() => _isStaff = value),
-                ),
-                if (_isStaff) ...[
-                  DropdownButtonFormField<String>(
-                    initialValue: _staffRole,
-                    decoration: const InputDecoration(
-                      labelText: 'Rol',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _staffRoles
-                        .map((role) => DropdownMenuItem(value: role, child: Text(role)))
-                        .toList(),
-                    onChanged: (value) => setState(() => _staffRole = value ?? _staffRoles.first),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _institucionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Institución',
-                      prefixIcon: Icon(Icons.local_hospital_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (_isStaff && (value == null || value.trim().isEmpty)) {
-                        return 'Ingresa tu institución';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
                 const SizedBox(height: 24),
                 SizedBox(
                   height: 50,

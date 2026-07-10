@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:meditrack_mobile/core/network/api_exception.dart';
 import 'package:meditrack_mobile/core/session/session_controller.dart';
+import 'package:meditrack_mobile/features/profile/presentation/screens/change_password_screen.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -20,6 +21,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final TextEditingController _nombreController;
   late final TextEditingController _emailController;
   late final TextEditingController _institucionController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _photoUrlController;
 
   @override
   void initState() {
@@ -28,6 +31,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nombreController = TextEditingController(text: user?.nombre ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
     _institucionController = TextEditingController(text: user?.institucion ?? '');
+    _phoneController = TextEditingController(text: user?.phoneNumber ?? '');
+    _photoUrlController = TextEditingController(text: user?.profilePhotoUrl ?? '');
   }
 
   @override
@@ -35,6 +40,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nombreController.dispose();
     _emailController.dispose();
     _institucionController.dispose();
+    _phoneController.dispose();
+    _photoUrlController.dispose();
     super.dispose();
   }
 
@@ -51,6 +58,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             institucion: _institucionController.text.trim().isEmpty
                 ? null
                 : _institucionController.text.trim(),
+            phoneNumber: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+            profilePhotoUrl:
+                _photoUrlController.text.trim().isEmpty ? null : _photoUrlController.text.trim(),
           );
       if (!mounted) return;
       setState(() => _isEditing = false);
@@ -72,22 +82,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     router.go('/login');
   }
 
-  void _showUnavailableNotice(String feature, String todo) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(feature),
-        content: Text(todo),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Entendido'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<SessionController>().current;
@@ -95,6 +89,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    final hasPhoto = user.profilePhotoUrl != null && user.profilePhotoUrl!.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3FAF7),
@@ -122,10 +118,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: CircleAvatar(
                   radius: 40,
                   backgroundColor: const Color(0xFFD9EAF6),
-                  child: Text(
-                    user.nombre.isNotEmpty ? user.nombre[0].toUpperCase() : '?',
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF27445C)),
-                  ),
+                  backgroundImage: hasPhoto ? NetworkImage(user.profilePhotoUrl!) : null,
+                  child: hasPhoto
+                      ? null
+                      : Text(
+                          user.nombre.isNotEmpty ? user.nombre[0].toUpperCase() : '?',
+                          style: const TextStyle(
+                              fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF27445C)),
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -167,9 +167,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextField(
+                        controller: _phoneController,
+                        enabled: _isEditing,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(labelText: 'Teléfono (opcional)'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
                         controller: _institucionController,
                         enabled: _isEditing,
                         decoration: const InputDecoration(labelText: 'Institución (opcional)'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _photoUrlController,
+                        enabled: _isEditing,
+                        decoration: const InputDecoration(
+                          labelText: 'URL de foto de perfil (opcional)',
+                          helperText: 'Pega el enlace de una imagen ya alojada en internet.',
+                        ),
                       ),
                       if (_isEditing) ...[
                         const SizedBox(height: 16),
@@ -185,6 +201,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           _nombreController.text = user.nombre;
                                           _emailController.text = user.email;
                                           _institucionController.text = user.institucion ?? '';
+                                          _phoneController.text = user.phoneNumber ?? '';
+                                          _photoUrlController.text = user.profilePhotoUrl ?? '';
                                         }),
                                 child: const Text('Cancelar'),
                               ),
@@ -216,47 +234,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.lock_reset_outlined, color: Colors.grey),
-                      title: const Text('Cambiar contraseña'),
-                      subtitle: const Text('No disponible aún'),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                      onTap: () => _showUnavailableNotice(
-                        'Cambiar contraseña',
-                        'Identity-Service todavía no expone un endpoint para cambiar contraseña.\n\n'
-                            'TODO técnico: conectar a PUT/POST /identity/api/v1/auth/change-password '
-                            'cuando exista en el backend.',
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.phone_outlined, color: Colors.grey),
-                      title: const Text('Teléfono'),
-                      subtitle: const Text('No disponible aún'),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                      onTap: () => _showUnavailableNotice(
-                        'Teléfono',
-                        'El modelo de usuario de Identity-Service no tiene campo de teléfono todavía.\n\n'
-                            'TODO técnico: agregar el campo en ProfileUpdateRequest/User cuando el '
-                            'backend lo soporte.',
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.photo_camera_outlined, color: Colors.grey),
-                      title: const Text('Foto de perfil'),
-                      subtitle: const Text('No disponible aún'),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                      onTap: () => _showUnavailableNotice(
-                        'Foto de perfil',
-                        'El modelo de usuario de Identity-Service no tiene campo de foto todavía.\n\n'
-                            'TODO técnico: agregar el campo (y almacenamiento de imagen) cuando el '
-                            'backend lo soporte.',
-                      ),
-                    ),
-                  ],
+                child: ListTile(
+                  leading: const Icon(Icons.lock_reset_outlined, color: Color(0xFF07866D)),
+                  title: const Text('Cambiar contraseña'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
