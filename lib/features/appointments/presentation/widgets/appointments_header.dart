@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meditrack_mobile/shared/widgets/user_avatar.dart';
 
 class AppointmentsHeader extends StatelessWidget {
   const AppointmentsHeader({super.key});
@@ -25,19 +26,7 @@ class AppointmentsHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        CircleAvatar(
-          radius: 19,
-          backgroundColor: const Color(0xFFE5EAE7),
-          child: IconButton(
-            padding: EdgeInsets.zero,
-            onPressed: () {},
-            icon: const Icon(
-              Icons.person_outline,
-              size: 21,
-              color: Color(0xFF334155),
-            ),
-          ),
-        ),
+        const UserAvatar(radius: 19),
       ],
     );
   }

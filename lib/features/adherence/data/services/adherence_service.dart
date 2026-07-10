@@ -1,67 +1,53 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:meditrack_mobile/core/constants/app_constants.dart';
+import 'package:meditrack_mobile/core/network/api_client.dart';
+import 'package:meditrack_mobile/core/network/api_exception.dart';
 
 class AdherenceService {
-  static const String followUpBaseUrl = AppConstants.followUpBaseUrl;
+  final Dio _dio = ApiClient.instance.dio;
 
   Future<double> getAdherencePercentage(int patientId) async {
-    final url = Uri.parse(
-      '$followUpBaseUrl/medications/adherence-history?patientId=$patientId',
-    );
-
-    final response = await http.get(url).timeout(const Duration(seconds: 8));
-
-    debugPrint('ADHERENCE HISTORY STATUS: ${response.statusCode}');
-    debugPrint('ADHERENCE HISTORY BODY: ${response.body}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+    try {
+      final response = await _dio.get(
+        '${AppConstants.followUpBaseUrl}/medications/adherence-history',
+        queryParameters: {'patientId': patientId},
+      );
+      final data = response.data as Map<String, dynamic>;
       return (data['overallAdherencePercentage'] as num).toDouble();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return 0;
+      throw mapDioException(e);
     }
-
-    if (response.statusCode == 404) return 0;
-
-    throw Exception('Error loading adherence percentage');
   }
 
+  /// Contrato real confirmado en FollowUp-Service:
+  /// `GET /api/v1/compliance?patientId=&limit=` (no existe `/compliance/recent`).
   Future<List<dynamic>> getRecentCompliance({
     required int patientId,
     int limit = 10,
   }) async {
-    final url = Uri.parse(
-      '$followUpBaseUrl/compliance/recent?patientId=$patientId&limit=$limit',
-    );
-
-    final response = await http.get(url).timeout(const Duration(seconds: 8));
-
-    debugPrint('RECENT COMPLIANCE STATUS: ${response.statusCode}');
-    debugPrint('RECENT COMPLIANCE BODY: ${response.body}');
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as List<dynamic>;
+    try {
+      final response = await _dio.get(
+        '${AppConstants.followUpBaseUrl}/compliance',
+        queryParameters: {'patientId': patientId, 'limit': limit},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return [];
+      throw mapDioException(e);
     }
-
-    if (response.statusCode == 404) return [];
-
-    throw Exception('Error loading recent compliance');
   }
 
   Future<List<dynamic>> getMedications(int patientId) async {
-    final url = Uri.parse('$followUpBaseUrl/medications?patientId=$patientId');
-
-    final response = await http.get(url).timeout(const Duration(seconds: 8));
-
-    debugPrint('MEDICATIONS STATUS: ${response.statusCode}');
-    debugPrint('MEDICATIONS BODY: ${response.body}');
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as List<dynamic>;
+    try {
+      final response = await _dio.get(
+        '${AppConstants.followUpBaseUrl}/medications',
+        queryParameters: {'patientId': patientId},
+      );
+      return response.data as List<dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return [];
+      throw mapDioException(e);
     }
-
-    if (response.statusCode == 404) return [];
-
-    throw Exception('Error loading medications');
   }
 }

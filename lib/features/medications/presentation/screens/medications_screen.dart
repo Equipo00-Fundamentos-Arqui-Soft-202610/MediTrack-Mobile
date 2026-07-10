@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:meditrack_mobile/core/network/api_exception.dart';
+import 'package:meditrack_mobile/core/session/session_controller.dart';
 import 'package:meditrack_mobile/features/medications/data/services/medication_service.dart';
 import 'package:meditrack_mobile/features/medications/domain/models/medication_model.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
+import 'package:meditrack_mobile/shared/widgets/user_avatar.dart';
 
 class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
@@ -19,7 +23,10 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
   void initState() {
     super.initState();
 
-    _medicationsFuture = _medicationService.getMedicationsByPatientId(1);
+    final patientId = context.read<SessionController>().patientId;
+    _medicationsFuture = patientId == null
+        ? Future.error(ApiException(null, 'No se pudo determinar tu perfil de paciente.'))
+        : _medicationService.getMedicationsByPatientId(patientId);
   }
 
   @override
@@ -49,10 +56,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 16),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=47'),
-            ),
+            child: UserAvatar(),
           ),
         ],
       ),
@@ -69,9 +73,13 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
               }
 
               if (snapshot.hasError) {
+                final error = snapshot.error;
+                final message = error is ApiException
+                    ? error.message
+                    : 'No se pudieron cargar los medicamentos.';
                 return Center(
                   child: Text(
-                    'No se pudieron cargar los medicamentos.\n${snapshot.error}',
+                    message,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Color(0xFFB42318),
@@ -154,8 +162,8 @@ class _MedicationsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Medicamentos',
@@ -165,14 +173,21 @@ class _MedicationsHeader extends StatelessWidget {
             color: Color(0xFF1F2933),
           ),
         ),
-        TextButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.add_circle_outline, size: 18),
-          label: const Text('Agregar'),
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF087D68),
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+        const SizedBox(height: 6),
+        // La app mobile es solo para pacientes: los medicamentos/recetas los
+        // registra el personal médico (Treatment-Service), no hay flujo de
+        // creación desde aquí.
+        Row(
+          children: [
+            const Icon(Icons.info_outline, size: 15, color: Color(0xFF5F6C72)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Los medicamentos son registrados por el personal médico.',
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF5F6C72)),
+              ),
+            ),
+          ],
         ),
       ],
     );

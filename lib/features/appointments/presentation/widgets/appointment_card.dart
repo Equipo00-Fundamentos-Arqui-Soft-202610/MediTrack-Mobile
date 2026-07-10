@@ -4,11 +4,15 @@ import 'package:meditrack_mobile/features/appointments/domain/models/appointment
 class AppointmentCard extends StatelessWidget {
   final AppointmentModel appointment;
   final bool isHighlighted;
+  final VoidCallback? onEdit;
+  final VoidCallback? onCancel;
 
   const AppointmentCard({
     super.key,
     required this.appointment,
     required this.isHighlighted,
+    this.onEdit,
+    this.onCancel,
   });
 
   @override
@@ -127,6 +131,36 @@ class AppointmentCard extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+          if (appointment.canBeModified && (onEdit != null || onCancel != null)) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                if (onEdit != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: const Text('Editar'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF00796B),
+                      ),
+                    ),
+                  ),
+                if (onEdit != null && onCancel != null) const SizedBox(width: 10),
+                if (onCancel != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: onCancel,
+                      icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                      label: const Text('Cancelar', style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
         ],
