@@ -1,96 +1,111 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:meditrack_mobile/core/constants/app_constants.dart';
+import 'package:meditrack_mobile/core/network/api_client.dart';
+import 'package:meditrack_mobile/core/network/api_exception.dart';
 
 import '../models/next_dose_model.dart';
 
 class HomeService {
-  static const String followUpBaseUrl = AppConstants.followUpBaseUrl;
-  static const String treatmentBaseUrl = AppConstants.treatmentBaseUrl;
+  final Dio _dio = ApiClient.instance.dio;
 
   Future<NextDoseModel?> getNextDose(int patientId) async {
-    final url = Uri.parse(
-      '$followUpBaseUrl/medications/next-dose?patientId=$patientId',
-    );
-
-    final response = await http.get(url);
-
-    print('NEXT DOSE STATUS: ${response.statusCode}');
-    print('NEXT DOSE BODY: ${response.body}');
-
-    if (response.statusCode == 200) {
-      if (response.body.isEmpty) return null;
-
-      final data = jsonDecode(response.body);
-      return NextDoseModel.fromJson(data);
+    try {
+      final response = await _dio.get(
+        '${AppConstants.followUpBaseUrl}/medications/next-dose',
+        queryParameters: {'patientId': patientId},
+      );
+      return NextDoseModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      throw mapDioException(e);
     }
-
-    if (response.statusCode == 404) {
-      return null;
-    }
-
-    throw Exception('Error loading next dose');
   }
 
   Future<double> getAdherencePercentage(int patientId) async {
-    final url = Uri.parse(
-      '$followUpBaseUrl/medications/adherence-history?patientId=$patientId',
-    );
-
-    final response = await http.get(url);
-
-    print('ADHERENCE STATUS: ${response.statusCode}');
-    print('ADHERENCE BODY: ${response.body}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+    try {
+      final response = await _dio.get(
+        '${AppConstants.followUpBaseUrl}/medications/adherence-history',
+        queryParameters: {'patientId': patientId},
+      );
+      final data = response.data as Map<String, dynamic>;
       return (data['overallAdherencePercentage'] as num).toDouble();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return 0;
+      throw mapDioException(e);
     }
-
-    if (response.statusCode == 404) {
-      return 0;
-    }
-
-    throw Exception('Error loading adherence percentage');
   }
 
   Future<void> takeDose({
     required int patientId,
     required int doseScheduleId,
   }) async {
-    final url = Uri.parse('$followUpBaseUrl/compliance?patientId=$patientId');
+    try {
+      await _dio.post(
+        '${AppConstants.followUpBaseUrl}/compliance',
+        queryParameters: {'patientId': patientId},
+        data: {
+          'doseScheduleId': doseScheduleId,
+          'status': 'taken',
+          'videoUrl': null,
+          'offlineRecordedAt': null,
+        },
+      );
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
 
-    final body = {
-      'patientId': patientId,
-      'doseScheduleId': doseScheduleId,
-      'status': 'taken',
-      'videoUrl': null,
-      'offlineRecordedAt': null,
-    };
+  /// Sube el video de evidencia de una dosis (flujo de validación humana —
+  /// MediTrack AI Validator Prototype). El backend crea/actualiza el
+  /// cumplimiento en estado PendingValidation y devuelve su id.
+  Future<int> uploadComplianceVideo({
+    required int doseScheduleId,
+    required File videoFile,
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'doseScheduleId': doseScheduleId,
+        'video': await MultipartFile.fromFile(videoFile.path),
+      });
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
+      final response = await _dio.post(
+        '${AppConstants.followUpBaseUrl}/compliance/video',
+        data: formData,
+        onSendProgress: onSendProgress,
+        options: Options(
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Error registering dose');
+      return response.data['complianceId'] as int;
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  /// Polling de estado mientras se espera validación.
+  Future<Map<String, dynamic>> getComplianceStatus(int complianceId) async {
+    try {
+      final response = await _dio.get(
+        '${AppConstants.followUpBaseUrl}/compliance/$complianceId/status',
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw mapDioException(e);
     }
   }
 
   Future<List<dynamic>> getLowStockMedications(int patientId) async {
-    // Treatment-service expone patientId como query param, no como segmento
-    // de ruta (GetMedicationsByPatientId([FromQuery] int patientId)).
-    final url = Uri.parse('$treatmentBaseUrl/medications?patientId=$patientId');
-
-    final response = await http.get(url);
-
-    print('LOW STOCK/TREATMENT STATUS: ${response.statusCode}');
-    print('LOW STOCK/TREATMENT BODY: ${response.body}');
-
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
+    try {
+      final response = await _dio.get(
+        '${AppConstants.treatmentBaseUrl}/medications',
+        queryParameters: {'patientId': patientId},
+      );
+      final List data = response.data as List;
 
       return data.where((medication) {
         final stockCount = medication['stockCount'] ?? 0;
@@ -99,8 +114,8 @@ class HomeService {
 
         return isActive == true && stockCount <= threshold;
       }).toList();
+    } on DioException catch (e) {
+      throw mapDioException(e);
     }
-
-    throw Exception('Error loading low stock medications');
   }
 }

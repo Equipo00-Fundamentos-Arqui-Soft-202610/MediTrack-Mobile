@@ -10,6 +10,7 @@ class MedicationModel {
   final DateTime? endDate;
   final int stockCount;
   final int stockAlertThreshold;
+  final bool isActive;
   final List<String> scheduledTimes;
 
   MedicationModel({
@@ -24,6 +25,7 @@ class MedicationModel {
     required this.endDate,
     required this.stockCount,
     required this.stockAlertThreshold,
+    required this.isActive,
     required this.scheduledTimes,
   });
 
@@ -40,6 +42,9 @@ class MedicationModel {
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       stockCount: json['stockCount'],
       stockAlertThreshold: json['stockAlertThreshold'],
+      // Treatment-service devuelve TODOS los medicamentos (activos e
+      // inactivos); el filtro por activos se hace en el cliente.
+      isActive: json['isActive'] as bool? ?? true,
       scheduledTimes: List<String>.from(json['scheduledTimes'] ?? []),
     );
   }

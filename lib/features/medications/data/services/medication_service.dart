@@ -1,28 +1,33 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:meditrack_mobile/core/constants/app_constants.dart';
+import 'package:meditrack_mobile/core/network/api_client.dart';
+import 'package:meditrack_mobile/core/network/api_exception.dart';
 
 import '../../domain/models/medication_model.dart';
 
 class MedicationService {
-  static const String baseUrl = AppConstants.treatmentBaseUrl;
+  final Dio _dio = ApiClient.instance.dio;
 
+  /// Contrato real confirmado en Treatment-service:
+  /// `GET /api/v1/medications?patientId=` (no `/medications/patient/{id}`).
+  /// El endpoint devuelve TODOS los medicamentos del paciente (activos e
+  /// inactivos/cancelados) — se filtra `isActive` aquí en el cliente.
   Future<List<MedicationModel>> getMedicationsByPatientId(int patientId) async {
-    // Treatment-service expone patientId como query param, no como segmento
-    // de ruta (GetMedicationsByPatientId([FromQuery] int patientId)).
-    final uri = Uri.parse('$baseUrl/medications?patientId=$patientId');
+    try {
+      final response = await _dio.get(
+        '${AppConstants.treatmentBaseUrl}/medications',
+        queryParameters: {'patientId': patientId},
+      );
 
-    final response = await http.get(uri);
+      final List<dynamic> jsonList = response.data as List<dynamic>;
 
-    if (response.statusCode != 200) {
-      throw Exception('Error al obtener medicamentos: ${response.body}');
+      return jsonList
+          .map((json) => MedicationModel.fromJson(json as Map<String, dynamic>))
+          .where((medication) => medication.isActive)
+          .toList();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return [];
+      throw mapDioException(e);
     }
-
-    final List<dynamic> jsonList = json.decode(response.body);
-
-    return jsonList
-        .map((json) => MedicationModel.fromJson(json as Map<String, dynamic>))
-        .toList();
   }
 }

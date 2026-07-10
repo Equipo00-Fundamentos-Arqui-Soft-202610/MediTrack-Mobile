@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:meditrack_mobile/core/network/api_exception.dart';
+import 'package:meditrack_mobile/core/session/session_controller.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
+import 'package:meditrack_mobile/shared/widgets/user_avatar.dart';
 import '../../data/services/adherence_service.dart';
 
 class AdherenceScreen extends StatefulWidget {
@@ -12,39 +16,61 @@ class AdherenceScreen extends StatefulWidget {
 class _AdherenceScreenState extends State<AdherenceScreen> {
   final AdherenceService _service = AdherenceService();
 
-  static const int patientId = 1;
-
-  late Future<_AdherenceData> _future;
+  bool _isLoading = true;
+  String? _errorMessage;
+  _AdherenceData _data = _AdherenceData.empty();
 
   @override
   void initState() {
     super.initState();
-    _future = _loadData();
+    _loadData();
   }
 
-  Future<_AdherenceData> _loadData() async {
-    final percentage = await _service.getAdherencePercentage(patientId);
+  Future<void> _loadData() async {
+    final patientId = context.read<SessionController>().patientId;
+    if (patientId == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No se pudo determinar tu perfil de paciente.';
+      });
+      return;
+    }
 
-    final recentCompliance = await _service.getRecentCompliance(
-      patientId: patientId,
-      limit: 10,
-    );
-
-    final medications = await _service.getMedications(patientId);
-
-    return _AdherenceData(
-      percentage: percentage,
-      recentCompliance: recentCompliance,
-      medications: medications,
-    );
-  }
-
-  Future<void> _refresh() async {
     setState(() {
-      _future = _loadData();
+      _isLoading = true;
+      _errorMessage = null;
     });
 
-    await _future;
+    try {
+      // Se piden en paralelo: si una falla no debe ocultar las otras dos.
+      final results = await Future.wait([
+        _service.getAdherencePercentage(patientId),
+        _service.getRecentCompliance(patientId: patientId, limit: 10),
+        _service.getMedications(patientId),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _data = _AdherenceData(
+          percentage: results[0] as double,
+          recentCompliance: results[1] as List<dynamic>,
+          medications: results[2] as List<dynamic>,
+        );
+        _isLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'No se pudo cargar tu adherencia. Intenta de nuevo.';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -53,25 +79,20 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
       drawer: const AppDrawerMenu(),
       backgroundColor: const Color(0xFFF3FAF7),
       body: SafeArea(
-        child: FutureBuilder<_AdherenceData>(
-          future: _future,
-          builder: (context, snapshot) {
-            return RefreshIndicator(
-              onRefresh: _refresh,
-              child: _buildBody(snapshot),
-            );
-          },
+        child: RefreshIndicator(
+          onRefresh: _loadData,
+          child: _buildBody(),
         ),
       ),
     );
   }
 
-  Widget _buildBody(AsyncSnapshot<_AdherenceData> snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
+  Widget _buildBody() {
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (snapshot.hasError) {
+    if (_errorMessage != null) {
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -79,14 +100,14 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
           const Icon(Icons.error_outline, size: 48),
           const SizedBox(height: 16),
           Text(
-            'No se pudo cargar la adherencia.\n${snapshot.error}',
+            'No se pudo cargar la adherencia.\n$_errorMessage',
             textAlign: TextAlign.center,
           ),
         ],
       );
     }
 
-    final data = snapshot.data ?? _AdherenceData.empty();
+    final data = _data;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
@@ -138,16 +159,7 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
           ),
         ),
         const Spacer(),
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: const Color(0xFFE1F3EE),
-          child: ClipOval(
-            child: Image.network(
-              'https://i.pravatar.cc/100',
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
+        const UserAvatar(),
       ],
     );
   }
@@ -300,8 +312,11 @@ class _DayStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTaken = status == 'taken';
-    final isSkipped = status == 'skipped';
+    // "approved" (evidencia validada) marca el día como cumplido igual que el
+    // "taken" legado; "rejected" se muestra igual que "skipped" (no cumplido).
+    // "pendingvalidation" queda en el estado neutro por defecto (sin marcar).
+    final isTaken = status == 'taken' || status == 'approved';
+    final isSkipped = status == 'skipped' || status == 'rejected';
 
     final bgColor = isTaken
         ? const Color(0xFF00796B)
@@ -344,7 +359,7 @@ class _HistoryItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = item['status']?.toString() ?? 'pending';
-    final isTaken = status == 'taken';
+    final visual = _complianceVisual(status);
 
     final recordedAt = DateTime.tryParse(item['recordedAt']?.toString() ?? '');
 
@@ -352,19 +367,19 @@ class _HistoryItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: _cardDecoration(
-        backgroundColor: isTaken ? Colors.white : const Color(0xFFFFEEEE),
-        borderColor: isTaken ? null : const Color(0xFFFFCDD2),
+        backgroundColor: visual.cardBackground,
+        borderColor: visual.cardBorder,
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 21,
-            backgroundColor: isTaken ? const Color(0xFFEAF2EF) : Colors.white,
+            backgroundColor: visual.avatarOuterBg,
             child: CircleAvatar(
               radius: 10,
-              backgroundColor: isTaken ? const Color(0xFF2E7D32) : Colors.red,
+              backgroundColor: visual.avatarInnerBg,
               child: Icon(
-                isTaken ? Icons.check : Icons.close,
+                visual.icon,
                 size: 14,
                 color: Colors.white,
               ),
@@ -443,23 +458,112 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTaken = status == 'taken';
+    final visual = _complianceVisual(status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: isTaken ? const Color(0xFFE8F5E9) : const Color(0xFFFFDAD6),
+        color: visual.badgeBackground,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        isTaken ? 'Tomado' : 'Omitido',
+        visual.label,
         style: TextStyle(
-          color: isTaken ? const Color(0xFF2E7D32) : Colors.red,
+          color: visual.badgeText,
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),
       ),
     );
+  }
+}
+
+/// Mapea el `status` real de FollowUp-Service (incluye ahora el flujo de
+/// validación de evidencia en video) a la representación visual del
+/// historial: los estados legados "taken"/"skipped" se mantienen tal cual;
+/// "approved" se muestra como completada (cuenta como cumplida, igual que
+/// "taken"); "pendingvalidation" y "rejected" son nuevos y no marcan el día
+/// como cumplido.
+class _ComplianceVisual {
+  final String label;
+  final Color badgeBackground;
+  final Color badgeText;
+  final Color cardBackground;
+  final Color? cardBorder;
+  final Color avatarOuterBg;
+  final Color avatarInnerBg;
+  final IconData icon;
+
+  const _ComplianceVisual({
+    required this.label,
+    required this.badgeBackground,
+    required this.badgeText,
+    required this.cardBackground,
+    required this.cardBorder,
+    required this.avatarOuterBg,
+    required this.avatarInnerBg,
+    required this.icon,
+  });
+}
+
+_ComplianceVisual _complianceVisual(String status) {
+  switch (status.toLowerCase()) {
+    case 'taken':
+      return const _ComplianceVisual(
+        label: 'Tomado',
+        badgeBackground: Color(0xFFE8F5E9),
+        badgeText: Color(0xFF2E7D32),
+        cardBackground: Colors.white,
+        cardBorder: null,
+        avatarOuterBg: Color(0xFFEAF2EF),
+        avatarInnerBg: Color(0xFF2E7D32),
+        icon: Icons.check,
+      );
+    case 'approved':
+      return const _ComplianceVisual(
+        label: 'Completada',
+        badgeBackground: Color(0xFFE8F5E9),
+        badgeText: Color(0xFF2E7D32),
+        cardBackground: Colors.white,
+        cardBorder: null,
+        avatarOuterBg: Color(0xFFEAF2EF),
+        avatarInnerBg: Color(0xFF2E7D32),
+        icon: Icons.check,
+      );
+    case 'pendingvalidation':
+      return const _ComplianceVisual(
+        label: 'En validación',
+        badgeBackground: Color(0xFFFFF3E0),
+        badgeText: Color(0xFFB35B00),
+        cardBackground: Color(0xFFFFFBF2),
+        cardBorder: Color(0xFFFFE0B2),
+        avatarOuterBg: Color(0xFFFFF3E0),
+        avatarInnerBg: Color(0xFFB35B00),
+        icon: Icons.hourglass_top,
+      );
+    case 'rejected':
+      return const _ComplianceVisual(
+        label: 'Rechazada',
+        badgeBackground: Color(0xFFFFDAD6),
+        badgeText: Colors.red,
+        cardBackground: Color(0xFFFFEEEE),
+        cardBorder: Color(0xFFFFCDD2),
+        avatarOuterBg: Colors.white,
+        avatarInnerBg: Colors.red,
+        icon: Icons.close,
+      );
+    case 'skipped':
+    default:
+      return const _ComplianceVisual(
+        label: 'Omitido',
+        badgeBackground: Color(0xFFFFDAD6),
+        badgeText: Colors.red,
+        cardBackground: Color(0xFFFFEEEE),
+        cardBorder: Color(0xFFFFCDD2),
+        avatarOuterBg: Colors.white,
+        avatarInnerBg: Colors.red,
+        icon: Icons.close,
+      );
   }
 }
 
