@@ -11,7 +11,10 @@ class SessionStorage {
   static const _tokenKey = 'meditrack_auth_token';
   static const _userKey = 'meditrack_auth_user';
 
-  Future<void> save({required String token, required Map<String, dynamic> user}) async {
+  Future<void> save({
+    required String token,
+    required Map<String, dynamic> user,
+  }) async {
     await _storage.write(key: _tokenKey, value: token);
     await _storage.write(key: _userKey, value: jsonEncode(user));
   }

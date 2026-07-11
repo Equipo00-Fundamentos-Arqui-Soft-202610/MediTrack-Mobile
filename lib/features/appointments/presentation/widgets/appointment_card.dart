@@ -133,7 +133,8 @@ class AppointmentCard extends StatelessWidget {
               ),
             ),
           ],
-          if (appointment.canBeModified && (onEdit != null || onCancel != null)) ...[
+          if (appointment.canBeModified &&
+              (onEdit != null || onCancel != null)) ...[
             const SizedBox(height: 14),
             Row(
               children: [
@@ -148,13 +149,21 @@ class AppointmentCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (onEdit != null && onCancel != null) const SizedBox(width: 10),
+                if (onEdit != null && onCancel != null)
+                  const SizedBox(width: 10),
                 if (onCancel != null)
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: onCancel,
-                      icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                      label: const Text('Cancelar', style: TextStyle(color: Colors.red)),
+                      icon: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Colors.red,
+                      ),
+                      label: const Text(
+                        'Cancelar',
+                        style: TextStyle(color: Colors.red),
+                      ),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.red),
                       ),

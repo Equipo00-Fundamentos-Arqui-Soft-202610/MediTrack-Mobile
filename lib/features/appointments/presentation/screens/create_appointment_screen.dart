@@ -15,7 +15,8 @@ class CreateAppointmentScreen extends StatefulWidget {
   const CreateAppointmentScreen({super.key, this.existing});
 
   @override
-  State<CreateAppointmentScreen> createState() => _CreateAppointmentScreenState();
+  State<CreateAppointmentScreen> createState() =>
+      _CreateAppointmentScreenState();
 }
 
 class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
@@ -74,14 +75,24 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     if (time == null) return;
 
     setState(() {
-      _scheduledAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      _scheduledAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
     });
   }
 
   List<String>? _parseRequirements() {
     final raw = _requirementsController.text.trim();
     if (raw.isEmpty) return null;
-    return raw.split(',').map((r) => r.trim()).where((r) => r.isNotEmpty).toList();
+    return raw
+        .split(',')
+        .map((r) => r.trim())
+        .where((r) => r.isNotEmpty)
+        .toList();
   }
 
   Future<void> _handleSubmit() async {
@@ -89,12 +100,16 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
 
     final scheduledAt = _scheduledAt;
     if (scheduledAt == null) {
-      setState(() => _errorMessage = 'Selecciona una fecha y hora para la cita.');
+      setState(
+        () => _errorMessage = 'Selecciona una fecha y hora para la cita.',
+      );
       return;
     }
     // APT-RF2: validar fecha futura antes de enviar.
     if (!scheduledAt.isAfter(DateTime.now())) {
-      setState(() => _errorMessage = 'La fecha de la cita debe ser en el futuro.');
+      setState(
+        () => _errorMessage = 'La fecha de la cita debe ser en el futuro.',
+      );
       return;
     }
 
@@ -111,8 +126,12 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
           id: widget.existing!.id,
           type: _typeController.text.trim(),
           scheduledAt: scheduledAt,
-          location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          location: _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
           requirements: _parseRequirements(),
         );
       } else {
@@ -128,8 +147,12 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
           patientId: patientId,
           type: _typeController.text.trim(),
           scheduledAt: scheduledAt,
-          location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          location: _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
           requirements: _parseRequirements(),
         );
       }
@@ -139,7 +162,9 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {
-      setState(() => _errorMessage = 'Ocurrió un error inesperado. Intenta de nuevo.');
+      setState(
+        () => _errorMessage = 'Ocurrió un error inesperado. Intenta de nuevo.',
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -170,7 +195,10 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                       color: const Color(0xFFFFEAEA),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFB3261E))),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Color(0xFFB3261E)),
+                    ),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -181,8 +209,9 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                     hintText: 'Ej. Cardiología, Control general',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (value) =>
-                      (value == null || value.trim().isEmpty) ? 'Ingresa el tipo de cita' : null,
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'Ingresa el tipo de cita'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 InkWell(
@@ -197,7 +226,7 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                       _scheduledAt == null
                           ? 'Selecciona fecha y hora'
                           : '${_scheduledAt!.day}/${_scheduledAt!.month}/${_scheduledAt!.year} · '
-                              '${_scheduledAt!.hour.toString().padLeft(2, '0')}:${_scheduledAt!.minute.toString().padLeft(2, '0')}',
+                                '${_scheduledAt!.hour.toString().padLeft(2, '0')}:${_scheduledAt!.minute.toString().padLeft(2, '0')}',
                     ),
                   ),
                 ),
@@ -222,7 +251,8 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                 TextFormField(
                   controller: _requirementsController,
                   decoration: const InputDecoration(
-                    labelText: 'Requisitos previos (opcional, separados por coma)',
+                    labelText:
+                        'Requisitos previos (opcional, separados por coma)',
                     hintText: 'Ej. Ayuno de 8 horas, traer exámenes previos',
                     border: OutlineInputBorder(),
                   ),
@@ -235,16 +265,23 @@ class _CreateAppointmentScreenState extends State<CreateAppointmentScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF00796B),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
                     ),
                     child: _isSubmitting
                         ? const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
                           )
-                        : Text(_isEditing ? 'Guardar cambios' : 'Agendar cita',
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        : Text(
+                            _isEditing ? 'Guardar cambios' : 'Agendar cita',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                   ),
                 ),
               ],

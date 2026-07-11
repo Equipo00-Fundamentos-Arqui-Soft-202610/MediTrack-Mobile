@@ -79,10 +79,7 @@ class _AdherenceScreenState extends State<AdherenceScreen> {
       drawer: const AppDrawerMenu(),
       backgroundColor: const Color(0xFFF3FAF7),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadData,
-          child: _buildBody(),
-        ),
+        child: RefreshIndicator(onRefresh: _loadData, child: _buildBody()),
       ),
     );
   }
@@ -378,11 +375,7 @@ class _HistoryItemCard extends StatelessWidget {
             child: CircleAvatar(
               radius: 10,
               backgroundColor: visual.avatarInnerBg,
-              child: Icon(
-                visual.icon,
-                size: 14,
-                color: Colors.white,
-              ),
+              child: Icon(visual.icon, size: 14, color: Colors.white),
             ),
           ),
           const SizedBox(width: 14),

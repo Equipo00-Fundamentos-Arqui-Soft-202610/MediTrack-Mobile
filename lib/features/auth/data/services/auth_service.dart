@@ -29,12 +29,18 @@ class AuthService {
   /// [rol] es "paciente" por defecto; Identity-Service también acepta
   /// "Doctor"/"TechnicalStaff"/"Admin" (con [institucion] opcional) para el
   /// registro de personal técnico (IAM-RF2).
+  ///
+  /// [dni] y [fechaNacimiento] mapean a los campos `Dni`/`FechaNacimiento` de
+  /// `MobileRegisterRequest` en Identity-Service (opcionales en el contrato,
+  /// pero requeridos por la UI de registro de paciente de esta app).
   Future<Map<String, dynamic>> register({
     required String nombre,
     required String email,
     required String password,
     String rol = 'paciente',
     String? institucion,
+    String? dni,
+    DateTime? fechaNacimiento,
   }) async {
     try {
       final response = await _dio.post(
@@ -45,6 +51,8 @@ class AuthService {
           'password': password,
           'rol': rol,
           'institucion': institucion,
+          'dni': dni,
+          'fechaNacimiento': fechaNacimiento?.toIso8601String(),
         },
       );
       return response.data as Map<String, dynamic>;
@@ -55,7 +63,9 @@ class AuthService {
 
   Future<Map<String, dynamic>> getProfile() async {
     try {
-      final response = await _dio.get('${AppConstants.identityBaseUrl}/profile');
+      final response = await _dio.get(
+        '${AppConstants.identityBaseUrl}/profile',
+      );
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
       throw mapDioException(e);
@@ -131,7 +141,9 @@ class AuthService {
   /// actual (si existe) y devuelve el perfil actualizado.
   Future<Map<String, dynamic>> deleteProfilePhoto() async {
     try {
-      final response = await _dio.delete('${AppConstants.identityBaseUrl}/profile/photo');
+      final response = await _dio.delete(
+        '${AppConstants.identityBaseUrl}/profile/photo',
+      );
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
       _debugLogFailure('DELETE /profile/photo', e);

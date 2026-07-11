@@ -41,7 +41,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = context.read<SessionController>().current;
     _nombreController = TextEditingController(text: user?.nombre ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
-    _institucionController = TextEditingController(text: user?.institucion ?? '');
+    _institucionController = TextEditingController(
+      text: user?.institucion ?? '',
+    );
     _phoneController = TextEditingController(text: user?.phoneNumber ?? '');
   }
 
@@ -62,13 +64,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       await context.read<SessionController>().updateProfile(
-            nombre: _nombreController.text.trim(),
-            email: _emailController.text.trim(),
-            institucion: _institucionController.text.trim().isEmpty
-                ? null
-                : _institucionController.text.trim(),
-            phoneNumber: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-          );
+        nombre: _nombreController.text.trim(),
+        email: _emailController.text.trim(),
+        institucion: _institucionController.text.trim().isEmpty
+            ? null
+            : _institucionController.text.trim(),
+        phoneNumber: _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+      );
       if (!mounted) return;
       setState(() => _isEditing = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,7 +81,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {
-      setState(() => _errorMessage = 'No se pudo actualizar el perfil. Intenta de nuevo.');
+      setState(
+        () => _errorMessage =
+            'No se pudo actualizar el perfil. Intenta de nuevo.',
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -92,7 +99,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _openPhotoOptions() async {
     if (_isUpdatingPhoto) return;
 
-    final hasPhoto = context.read<SessionController>().current?.profilePhotoUrl?.isNotEmpty == true;
+    final hasPhoto =
+        context
+            .read<SessionController>()
+            .current
+            ?.profilePhotoUrl
+            ?.isNotEmpty ==
+        true;
 
     final choice = await showModalBottomSheet<_PhotoAction>(
       context: context,
@@ -105,20 +118,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const SizedBox(height: 8),
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: Color(0xFF07866D)),
+              leading: const Icon(
+                Icons.photo_camera_outlined,
+                color: Color(0xFF07866D),
+              ),
               title: const Text('Tomar foto'),
               onTap: () => Navigator.of(sheetContext).pop(_PhotoAction.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF07866D)),
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: Color(0xFF07866D),
+              ),
               title: const Text('Elegir de galería'),
               onTap: () => Navigator.of(sheetContext).pop(_PhotoAction.gallery),
             ),
             if (hasPhoto)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Eliminar foto', style: TextStyle(color: Colors.red)),
-                onTap: () => Navigator.of(sheetContext).pop(_PhotoAction.delete),
+                title: const Text(
+                  'Eliminar foto',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_PhotoAction.delete),
               ),
             const SizedBox(height: 8),
           ],
@@ -248,9 +271,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await context.read<SessionController>().deleteProfilePhoto();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto de perfil eliminada')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Foto de perfil eliminada')));
     } on ApiException catch (e) {
       if (!mounted) return;
       _showSnack(e.message);
@@ -263,7 +286,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -300,7 +325,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    UserAvatar(radius: 40, onTap: _isUpdatingPhoto ? null : _openPhotoOptions),
+                    UserAvatar(
+                      radius: 40,
+                      onTap: _isUpdatingPhoto ? null : _openPhotoOptions,
+                    ),
                     if (_isUpdatingPhoto)
                       Positioned.fill(
                         child: CircleAvatar(
@@ -309,7 +337,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       )
@@ -326,7 +357,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 2),
                             ),
-                            child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 16,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -343,7 +378,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Center(
                 child: Text(
                   user.rol,
-                  style: const TextStyle(color: Color(0xFF4B5563), fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Color(0xFF4B5563),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -354,12 +392,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: const Color(0xFFFFEAEA),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFB3261E))),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Color(0xFFB3261E)),
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
               Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -374,20 +417,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       TextField(
                         controller: _emailController,
                         enabled: _isEditing,
-                        decoration: const InputDecoration(labelText: 'Correo electrónico'),
+                        decoration: const InputDecoration(
+                          labelText: 'Correo electrónico',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _phoneController,
                         enabled: _isEditing,
                         keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(labelText: 'Teléfono (opcional)'),
+                        decoration: const InputDecoration(
+                          labelText: 'Teléfono (opcional)',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _institucionController,
                         enabled: _isEditing,
-                        decoration: const InputDecoration(labelText: 'Institución (opcional)'),
+                        decoration: const InputDecoration(
+                          labelText: 'Institución (opcional)',
+                        ),
                       ),
                       if (_isEditing) ...[
                         const SizedBox(height: 16),
@@ -398,13 +447,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onPressed: _isSaving
                                     ? null
                                     : () => setState(() {
-                                          _isEditing = false;
-                                          _errorMessage = null;
-                                          _nombreController.text = user.nombre;
-                                          _emailController.text = user.email;
-                                          _institucionController.text = user.institucion ?? '';
-                                          _phoneController.text = user.phoneNumber ?? '';
-                                        }),
+                                        _isEditing = false;
+                                        _errorMessage = null;
+                                        _nombreController.text = user.nombre;
+                                        _emailController.text = user.email;
+                                        _institucionController.text =
+                                            user.institucion ?? '';
+                                        _phoneController.text =
+                                            user.phoneNumber ?? '';
+                                      }),
                                 child: const Text('Cancelar'),
                               ),
                             ),
@@ -420,7 +471,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ? const SizedBox(
                                         width: 18,
                                         height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
                                       )
                                     : const Text('Guardar'),
                               ),
@@ -434,13 +488,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 16),
               Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
                 child: ListTile(
-                  leading: const Icon(Icons.lock_reset_outlined, color: Color(0xFF07866D)),
+                  leading: const Icon(
+                    Icons.lock_reset_outlined,
+                    color: Color(0xFF07866D),
+                  ),
                   title: const Text('Cambiar contraseña'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const ChangePasswordScreen(),
+                    ),
                   ),
                 ),
               ),
@@ -448,7 +509,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               OutlinedButton.icon(
                 onPressed: _handleLogout,
                 icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
+                label: const Text(
+                  'Cerrar sesión',
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ],
           ),

@@ -24,7 +24,8 @@ class AppDrawerMenu extends StatelessWidget {
                     radius: 28,
                     backgroundColor: const Color(0xFFD9EAF6),
                     child: Text(
-                      (user?.nombre.isNotEmpty == true ? user!.nombre[0] : '?').toUpperCase(),
+                      (user?.nombre.isNotEmpty == true ? user!.nombre[0] : '?')
+                          .toUpperCase(),
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,

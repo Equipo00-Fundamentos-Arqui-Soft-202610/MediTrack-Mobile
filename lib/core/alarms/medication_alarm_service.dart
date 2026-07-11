@@ -63,6 +63,43 @@ class MedicationAlarmService {
     await Alarm.stop(alarmId);
   }
 
+  /// Programa una alarma sonora en un instante exacto (usado por el ciclo
+  /// escalonado de recordatorios: alarma inicial + 2 avisos), a diferencia de
+  /// [scheduleMedicationAlarm] que solo toma hora:minuto del día actual.
+  ///
+  /// El paquete `alarm` no permite distinguir por qué dejó de sonar una
+  /// alarma (botón, deslizar, timeout), así que su botón se etiqueta como
+  /// "Silenciar" y SOLO detiene el sonido — no tiene ningún significado de
+  /// negocio. La acción explícita "Tomar dosis" vive por separado en
+  /// `LocalNotificationService` (`flutter_local_notifications`, que sí
+  /// permite distinguir acciones vía `actionId`).
+  Future<void> scheduleAlarmAt({
+    required int alarmId,
+    required DateTime dateTime,
+    required String title,
+    required String body,
+  }) async {
+    final alarmSettings = AlarmSettings(
+      id: alarmId,
+      dateTime: dateTime,
+      assetAudioPath: 'assets/sounds/medication_alarm.mp3',
+      loopAudio: true,
+      vibrate: true,
+      volumeSettings: const VolumeSettings.fixed(
+        volume: 0.8,
+        volumeEnforced: true,
+      ),
+      notificationSettings: NotificationSettings(
+        title: title,
+        body: body,
+        stopButton: 'Silenciar',
+        icon: 'notification_icon',
+      ),
+    );
+
+    await Alarm.set(alarmSettings: alarmSettings);
+  }
+
   DateTime _nextAlarmDateTime(int hour, int minute) {
     final now = DateTime.now();
 

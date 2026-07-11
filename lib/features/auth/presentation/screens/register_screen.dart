@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:meditrack_mobile/core/network/api_exception.dart';
 import 'package:meditrack_mobile/core/session/session_controller.dart';
@@ -19,21 +21,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _dniController = TextEditingController();
 
   bool _isSubmitting = false;
   String? _errorMessage;
   bool _obscurePassword = true;
+  DateTime? _fechaNacimiento;
+  bool _fechaNacimientoTouched = false;
+
+  static final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
 
   @override
   void dispose() {
     _nombreController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _dniController.dispose();
     super.dispose();
   }
 
+  Future<void> _pickFechaNacimiento() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate:
+          _fechaNacimiento ?? DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: now,
+      helpText: 'Selecciona tu fecha de nacimiento',
+      cancelText: 'Cancelar',
+      confirmText: 'Confirmar',
+    );
+    if (picked != null) {
+      setState(() {
+        _fechaNacimiento = picked;
+        _fechaNacimientoTouched = true;
+      });
+    }
+  }
+
+  int? get _edadCalculada {
+    final birth = _fechaNacimiento;
+    if (birth == null) return null;
+    final now = DateTime.now();
+    var age = now.year - birth.year;
+    if (now.month < birth.month ||
+        (now.month == birth.month && now.day < birth.day)) {
+      age--;
+    }
+    return age;
+  }
+
   Future<void> _handleRegister() async {
-    if (!_formKey.currentState!.validate()) return;
+    setState(() => _fechaNacimientoTouched = true);
+    final formValid = _formKey.currentState!.validate();
+    if (!formValid || _fechaNacimiento == null) return;
 
     setState(() {
       _isSubmitting = true;
@@ -42,10 +84,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       await context.read<SessionController>().register(
-            nombre: _nombreController.text.trim(),
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+        nombre: _nombreController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        dni: _dniController.text.trim(),
+        fechaNacimiento: _fechaNacimiento!,
+      );
       // Registro devuelve token: sesión queda iniciada y el redirect de
       // go_router navega a Home automáticamente.
     } on NotAPatientException catch (e) {
@@ -53,7 +97,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {
-      setState(() => _errorMessage = 'Ocurrió un error inesperado. Intenta de nuevo.');
+      setState(
+        () => _errorMessage = 'Ocurrió un error inesperado. Intenta de nuevo.',
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -98,8 +144,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     prefixIcon: Icon(Icons.person_outline),
                     border: OutlineInputBorder(),
                   ),
-                  validator: (value) =>
-                      (value == null || value.trim().isEmpty) ? 'Ingresa tu nombre' : null,
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'Ingresa tu nombre'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -111,10 +158,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) return 'Ingresa tu correo';
+                    if (value == null || value.trim().isEmpty)
+                      return 'Ingresa tu correo';
                     if (!value.contains('@')) return 'Correo inválido';
                     return null;
                   },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _dniController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 8,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(8),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'DNI',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                    border: OutlineInputBorder(),
+                    counterText: '',
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty)
+                      return 'Ingresa tu DNI';
+                    if (value.trim().length != 8)
+                      return 'El DNI debe tener 8 dígitos';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: _pickFechaNacimiento,
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Fecha de nacimiento',
+                      prefixIcon: const Icon(Icons.cake_outlined),
+                      border: const OutlineInputBorder(),
+                      errorText:
+                          _fechaNacimientoTouched && _fechaNacimiento == null
+                          ? 'Selecciona tu fecha de nacimiento'
+                          : null,
+                    ),
+                    child: Text(
+                      _fechaNacimiento != null
+                          ? '${_dateFormat.format(_fechaNacimiento!)}'
+                                '${_edadCalculada != null ? ' (${_edadCalculada!} años)' : ''}'
+                          : 'Selecciona una fecha',
+                      style: TextStyle(
+                        color: _fechaNacimiento != null
+                            ? const Color(0xFF1F2937)
+                            : Theme.of(context).hintColor,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -125,12 +222,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa una contraseña';
+                    if (value == null || value.isEmpty)
+                      return 'Ingresa una contraseña';
                     if (value.length < 6) return 'Mínimo 6 caracteres';
                     return null;
                   },
@@ -151,9 +254,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ? const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
                           )
-                        : const Text('Crear cuenta', style: TextStyle(fontWeight: FontWeight.bold)),
+                        : const Text(
+                            'Crear cuenta',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),

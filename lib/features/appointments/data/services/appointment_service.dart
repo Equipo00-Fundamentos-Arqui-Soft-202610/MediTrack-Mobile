@@ -17,7 +17,9 @@ class AppointmentService {
       );
       final List<dynamic> data = response.data as List<dynamic>;
       return data
-          .map((item) => AppointmentModel.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => AppointmentModel.fromJson(item as Map<String, dynamic>),
+          )
           .toList();
     } on DioException catch (e) {
       throw mapDioException(e);
@@ -94,7 +96,9 @@ class AppointmentService {
       );
       final List<dynamic> data = response.data as List<dynamic>;
       return data
-          .map((item) => ClinicalExamModel.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => ClinicalExamModel.fromJson(item as Map<String, dynamic>),
+          )
           .toList();
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return [];

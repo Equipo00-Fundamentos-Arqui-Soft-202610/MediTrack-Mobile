@@ -46,7 +46,10 @@ GoRouter buildRouter(SessionController session) {
             path: '/medications',
             builder: (c, s) => const MedicationsScreen(),
           ),
-          GoRoute(path: '/adherence', builder: (c, s) => const AdherenceScreen()),
+          GoRoute(
+            path: '/adherence',
+            builder: (c, s) => const AdherenceScreen(),
+          ),
           GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
           GoRoute(
             path: '/appointments',

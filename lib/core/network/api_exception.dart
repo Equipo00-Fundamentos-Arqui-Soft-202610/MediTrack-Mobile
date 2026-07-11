@@ -27,7 +27,10 @@ ApiException mapDioException(DioException error) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return ApiException(null, 'La conexión tardó demasiado. Intenta de nuevo.');
+        return ApiException(
+          null,
+          'La conexión tardó demasiado. Intenta de nuevo.',
+        );
       case DioExceptionType.connectionError:
         return ApiException(
           null,
@@ -63,14 +66,26 @@ ApiException mapDioException(DioException error) {
     case 400:
       return ApiException(400, message ?? 'Solicitud inválida.');
     case 401:
-      return ApiException(401, message ?? 'Sesión expirada. Inicia sesión nuevamente.');
+      return ApiException(
+        401,
+        message ?? 'Sesión expirada. Inicia sesión nuevamente.',
+      );
     case 404:
-      return ApiException(404, message ?? 'No se encontró la información solicitada.');
+      return ApiException(
+        404,
+        message ?? 'No se encontró la información solicitada.',
+      );
     case 409:
       return ApiException(409, message ?? 'El recurso ya existe.');
     case 500:
-      return ApiException(500, message ?? 'Error interno del servidor. Intenta más tarde.');
+      return ApiException(
+        500,
+        message ?? 'Error interno del servidor. Intenta más tarde.',
+      );
     default:
-      return ApiException(statusCode, message ?? 'Ocurrió un error inesperado ($statusCode).');
+      return ApiException(
+        statusCode,
+        message ?? 'Ocurrió un error inesperado ($statusCode).',
+      );
   }
 }

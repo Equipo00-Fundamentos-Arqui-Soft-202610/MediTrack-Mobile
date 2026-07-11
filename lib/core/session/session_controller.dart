@@ -34,9 +34,13 @@ class NotAPatientException implements Exception {
 ///    Identity-Service exponga la vinculación real, reemplazar este fallback
 ///    aquí (único lugar centralizado, según lo pedido).
 class SessionController extends ChangeNotifier {
-  SessionController({SessionStorage? storage, AuthService? authService})
-      : _storage = storage ?? SessionStorage(),
-        _authService = authService ?? AuthService();
+  SessionController({
+    SessionStorage? storage,
+    AuthService? authService,
+    PushNotificationService? pushNotificationService,
+  }) : _storage = storage ?? SessionStorage(),
+       _authService = authService ?? AuthService(),
+       _pushNotificationServiceOverride = pushNotificationService;
 
   /// MediTrack-Mobile es exclusivamente para pacientes: se muestra tal cual
   /// cuando login/registro/restauración de sesión detectan un rol distinto.
@@ -46,6 +50,16 @@ class SessionController extends ChangeNotifier {
 
   final SessionStorage _storage;
   final AuthService _authService;
+
+  /// Sin inyectar en producción: se resuelve perezosamente contra
+  /// `PushNotificationService.instance` solo cuando de verdad se necesita
+  /// (dentro de `_persist`/`restoreSession`), no en el constructor — así
+  /// construir un `SessionController` nunca toca Firebase por sí solo (clave
+  /// para poder testear todo lo que no dependa de push notifications sin
+  /// tener que inyectar un fake en cada test).
+  final PushNotificationService? _pushNotificationServiceOverride;
+  PushNotificationService get _pushNotificationService =>
+      _pushNotificationServiceOverride ?? PushNotificationService.instance;
 
   UserSession? _current;
   bool _isRestoring = true;
@@ -96,6 +110,10 @@ class SessionController extends ChangeNotifier {
       phoneNumber: usuario['phoneNumber'] as String?,
       profilePhotoUrl: usuario['profilePhotoUrl'] as String?,
       patientId: _resolvePatientId(token, usuario),
+      dni: usuario['dni'] as String?,
+      fechaNacimiento: usuario['fechaNacimiento'] != null
+          ? DateTime.parse(usuario['fechaNacimiento'] as String)
+          : null,
     );
   }
 
@@ -128,6 +146,10 @@ class SessionController extends ChangeNotifier {
         phoneNumber: profile['phoneNumber'] as String?,
         profilePhotoUrl: profile['profilePhotoUrl'] as String?,
         patientId: storedUser['patientId'] as int?,
+        dni: profile['dni'] as String?,
+        fechaNacimiento: profile['fechaNacimiento'] != null
+            ? DateTime.parse(profile['fechaNacimiento'] as String)
+            : null,
       );
     } on ApiException catch (e) {
       if (e.isUnauthorized) {
@@ -144,7 +166,9 @@ class SessionController extends ChangeNotifier {
       await _clearLocalSession();
       blockedMessage = patientOnlyMessage;
     } else if (restored?.patientId != null) {
-      await PushNotificationService.instance.subscribeToPatientTopic(restored!.patientId!);
+      await _pushNotificationService.subscribeToPatientTopic(
+        restored!.patientId!,
+      );
     }
 
     _isRestoring = false;
@@ -172,6 +196,8 @@ class SessionController extends ChangeNotifier {
     required String nombre,
     required String email,
     required String password,
+    required String dni,
+    required DateTime fechaNacimiento,
   }) async {
     final response = await _authService.register(
       nombre: nombre,
@@ -179,6 +205,8 @@ class SessionController extends ChangeNotifier {
       password: password,
       rol: 'paciente',
       institucion: null,
+      dni: dni,
+      fechaNacimiento: fechaNacimiento,
     );
     final session = _buildSession(response);
     if (!session.isPaciente) {
@@ -245,6 +273,10 @@ class SessionController extends ChangeNotifier {
       phoneNumber: updated['phoneNumber'] as String?,
       profilePhotoUrl: updated['profilePhotoUrl'] as String?,
       patientId: current.patientId,
+      dni: updated['dni'] as String? ?? current.dni,
+      fechaNacimiento: updated['fechaNacimiento'] != null
+          ? DateTime.parse(updated['fechaNacimiento'] as String)
+          : current.fechaNacimiento,
     );
     await _storage.save(token: current.token, user: _current!.toStorageJson());
     notifyListeners();
@@ -255,7 +287,9 @@ class SessionController extends ChangeNotifier {
     await _storage.save(token: session.token, user: session.toStorageJson());
     _current = session;
     if (session.patientId != null) {
-      await PushNotificationService.instance.subscribeToPatientTopic(session.patientId!);
+      await _pushNotificationService.subscribeToPatientTopic(
+        session.patientId!,
+      );
     }
     notifyListeners();
   }

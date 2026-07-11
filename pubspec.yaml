@@ -64,6 +64,11 @@ dependencies:
   # Sesión / almacenamiento seguro del token JWT
   flutter_secure_storage: ^9.2.2
 
+  # Persistencia local del ciclo de recordatorios de dosis (no sensible, no
+  # requiere cifrado): sobrevive a cierres/reinicios de la app para poder
+  # reconstruir y cancelar alarmas ya programadas.
+  shared_preferences: ^2.3.2
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8

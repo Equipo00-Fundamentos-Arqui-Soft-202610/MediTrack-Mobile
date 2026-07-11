@@ -9,8 +9,17 @@ import 'package:meditrack_mobile/core/constants/app_constants.dart';
 import 'package:meditrack_mobile/core/network/api_exception.dart';
 import 'package:meditrack_mobile/features/home/data/models/next_dose_model.dart';
 import 'package:meditrack_mobile/features/home/data/services/home_service.dart';
+import 'package:meditrack_mobile/features/reminders/application/services/dose_reminder_coordinator.dart';
 
-enum _Stage { recording, preview, uploading, waiting, approved, rejected, error }
+enum _Stage {
+  recording,
+  preview,
+  uploading,
+  waiting,
+  approved,
+  rejected,
+  error,
+}
 
 /// Flujo completo de evidencia en video para "Tomar dosis": grabar (máx. 30s)
 /// -> previsualizar -> enviar -> esperar validación humana (MediTrack AI
@@ -88,7 +97,8 @@ class _DoseEvidenceScreenState extends State<DoseEvidenceScreen> {
   }
 
   Future<void> _handleSend() async {
-    if (_videoFile == null || _stage == _Stage.uploading) return; // evita doble envío
+    if (_videoFile == null || _stage == _Stage.uploading)
+      return; // evita doble envío
 
     setState(() {
       _stage = _Stage.uploading;
@@ -108,6 +118,13 @@ class _DoseEvidenceScreenState extends State<DoseEvidenceScreen> {
 
       await _deleteLocalVideo();
       _changed = true;
+      // Ya existe evidencia para esta dosis: no debe volver a sonar ninguna
+      // alarma de este ciclo (regla: "al estar PendingValidation no se
+      // programan nuevos avisos").
+      await DoseReminderCoordinator.instance.cancelCycleForResolvedDose(
+        doseScheduleId: widget.dose.doseScheduleId,
+        scheduledAtUtc: widget.dose.scheduledAtUtc,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -218,14 +235,17 @@ class _DoseEvidenceScreenState extends State<DoseEvidenceScreen> {
           icon: Icons.cloud_upload_outlined,
           title: 'Enviando evidencia...',
           subtitle: '${(_uploadProgress * 100).toStringAsFixed(0)}%',
-          child: LinearProgressIndicator(value: _uploadProgress == 0 ? null : _uploadProgress),
+          child: LinearProgressIndicator(
+            value: _uploadProgress == 0 ? null : _uploadProgress,
+          ),
         );
 
       case _Stage.waiting:
         return _buildStatusCard(
           icon: Icons.hourglass_top,
           title: 'Evidencia en validación',
-          subtitle: 'Un validador revisará tu video en breve. Puedes cerrar esta pantalla;\n'
+          subtitle:
+              'Un validador revisará tu video en breve. Puedes cerrar esta pantalla;\n'
               'el estado se actualizará en Inicio.',
           child: const Padding(
             padding: EdgeInsets.only(top: 16),
@@ -311,7 +331,7 @@ class _DoseEvidenceScreenState extends State<DoseEvidenceScreen> {
 
   bool _isStillWithinWindow() {
     final windowEnd = widget.dose.scheduledAtUtc.add(
-      const Duration(minutes: AppConstants.takeDoseToleranceMinutes),
+      const Duration(minutes: AppConstants.doseReminderCloseOffsetMinutes),
     );
     return !DateTime.now().toUtc().isAfter(windowEnd);
   }
@@ -336,13 +356,19 @@ class _DoseEvidenceScreenState extends State<DoseEvidenceScreen> {
               onPressed: () {
                 if (controller == null) return;
                 setState(() {
-                  controller.value.isPlaying ? controller.pause() : controller.play();
+                  controller.value.isPlaying
+                      ? controller.pause()
+                      : controller.play();
                 });
               },
               icon: Icon(
-                controller?.value.isPlaying == true ? Icons.pause : Icons.play_arrow,
+                controller?.value.isPlaying == true
+                    ? Icons.pause
+                    : Icons.play_arrow,
               ),
-              style: IconButton.styleFrom(backgroundColor: const Color(0xFF07866D)),
+              style: IconButton.styleFrom(
+                backgroundColor: const Color(0xFF07866D),
+              ),
               color: Colors.white,
             ),
           ],
@@ -391,7 +417,11 @@ class _DoseEvidenceScreenState extends State<DoseEvidenceScreen> {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
+            ),
           ),
           const SizedBox(height: 8),
           Text(

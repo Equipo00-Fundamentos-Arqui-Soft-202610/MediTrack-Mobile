@@ -38,7 +38,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   Future<List<AppointmentModel>> _loadAppointments() {
     final patientId = _patientId;
     if (patientId == null) {
-      return Future.error(ApiException(null, 'No se pudo determinar tu perfil de paciente.'));
+      return Future.error(
+        ApiException(null, 'No se pudo determinar tu perfil de paciente.'),
+      );
     }
     return _appointmentService.getAppointmentsByPatientId(patientId);
   }
@@ -48,7 +50,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     if (patientId == null) return;
 
     try {
-      final exams = await _appointmentService.getPendingClinicalExams(patientId);
+      final exams = await _appointmentService.getPendingClinicalExams(
+        patientId,
+      );
       if (!mounted) return;
       setState(() {
         _pendingExams = exams;
@@ -73,7 +77,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   Future<void> _openCreateAppointment({AppointmentModel? existing}) async {
     final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => CreateAppointmentScreen(existing: existing)),
+      MaterialPageRoute(
+        builder: (_) => CreateAppointmentScreen(existing: existing),
+      ),
     );
     if (created == true) {
       _refreshAppointments();
@@ -85,12 +91,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Cancelar cita'),
-        content: Text('¿Seguro que quieres cancelar la cita de ${appointment.type}?'),
+        content: Text(
+          '¿Seguro que quieres cancelar la cita de ${appointment.type}?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('No')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('No'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sí, cancelar', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Sí, cancelar',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -106,7 +120,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       _refreshAppointments();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -192,7 +208,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                           appointment: appointment,
                           isHighlighted: index == 0,
                           onEdit: appointment.canBeModified
-                              ? () => _openCreateAppointment(existing: appointment)
+                              ? () => _openCreateAppointment(
+                                  existing: appointment,
+                                )
                               : null,
                           onCancel: appointment.canBeModified
                               ? () => _handleCancel(appointment)
@@ -218,7 +236,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
       children: [
         const Text(
           'Exámenes Pendientes',
-          style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+          style: TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF111827),
+          ),
         ),
         const SizedBox(height: 6),
         const Text(
@@ -227,7 +249,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         ),
         const SizedBox(height: 16),
         if (_examsError != null)
-          AppointmentsErrorCard(message: _examsError!, onRetry: _loadPendingExams)
+          AppointmentsErrorCard(
+            message: _examsError!,
+            onRetry: _loadPendingExams,
+          )
         else if (_pendingExams.isEmpty)
           Container(
             width: double.infinity,
@@ -261,12 +286,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(exam.examType, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          exam.examType,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         Text(
                           exam.scheduledDate != null
                               ? 'Programado: ${exam.scheduledDate!.day}/${exam.scheduledDate!.month}/${exam.scheduledDate!.year}'
                               : 'Sin fecha programada',
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6B7280),
+                          ),
                         ),
                       ],
                     ),

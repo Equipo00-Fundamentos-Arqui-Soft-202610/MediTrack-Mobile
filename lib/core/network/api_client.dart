@@ -26,7 +26,9 @@ class ApiClient {
           handler.next(options);
         },
         onError: (error, handler) {
-          final hadToken = error.requestOptions.headers.containsKey('Authorization');
+          final hadToken = error.requestOptions.headers.containsKey(
+            'Authorization',
+          );
           if (error.response?.statusCode == 401 && hadToken) {
             onUnauthorized?.call();
           }

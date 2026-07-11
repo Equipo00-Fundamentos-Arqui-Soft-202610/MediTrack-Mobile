@@ -42,9 +42,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     try {
       await context.read<SessionController>().changePassword(
-            currentPassword: _currentController.text,
-            newPassword: _newController.text,
-          );
+        currentPassword: _currentController.text,
+        newPassword: _newController.text,
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -54,7 +54,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {
-      setState(() => _errorMessage = 'Ocurrió un error inesperado. Intenta de nuevo.');
+      setState(
+        () => _errorMessage = 'Ocurrió un error inesperado. Intenta de nuevo.',
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -85,7 +87,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       color: const Color(0xFFFFEAEA),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(_errorMessage!, style: const TextStyle(color: Color(0xFFB3261E))),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Color(0xFFB3261E)),
+                    ),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -97,12 +102,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureCurrent ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
+                      icon: Icon(
+                        _obscureCurrent
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscureCurrent = !_obscureCurrent),
                     ),
                   ),
-                  validator: (value) =>
-                      (value == null || value.isEmpty) ? 'Ingresa tu contraseña actual' : null,
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'Ingresa tu contraseña actual'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -113,12 +124,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     prefixIcon: const Icon(Icons.lock_reset_outlined),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                      icon: Icon(
+                        _obscureNew ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscureNew = !_obscureNew),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Ingresa la nueva contraseña';
+                    if (value == null || value.isEmpty)
+                      return 'Ingresa la nueva contraseña';
                     if (value.length < 6) return 'Mínimo 6 caracteres';
                     return null;
                   },
@@ -132,13 +147,20 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     prefixIcon: const Icon(Icons.lock_reset_outlined),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Confirma la nueva contraseña';
-                    if (value != _newController.text) return 'Las contraseñas no coinciden';
+                    if (value == null || value.isEmpty)
+                      return 'Confirma la nueva contraseña';
+                    if (value != _newController.text)
+                      return 'Las contraseñas no coinciden';
                     return null;
                   },
                 ),
@@ -150,15 +172,23 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF07866D),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
                     ),
                     child: _isSubmitting
                         ? const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
                           )
-                        : const Text('Actualizar contraseña', style: TextStyle(fontWeight: FontWeight.bold)),
+                        : const Text(
+                            'Actualizar contraseña',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                   ),
                 ),
               ],

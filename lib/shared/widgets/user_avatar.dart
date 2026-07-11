@@ -40,7 +40,8 @@ class _UserAvatarState extends State<UserAvatar> {
       _imageFailed = false;
     }
 
-    final initial = (user?.nombre.isNotEmpty == true ? user!.nombre[0] : '?').toUpperCase();
+    final initial = (user?.nombre.isNotEmpty == true ? user!.nombre[0] : '?')
+        .toUpperCase();
 
     Widget content;
     if (hasPhoto && !_imageFailed) {

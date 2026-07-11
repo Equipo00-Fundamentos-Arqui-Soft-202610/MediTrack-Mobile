@@ -49,16 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await context.read<SessionController>().login(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
       // El redirect de go_router reacciona a SessionController y navega a Home.
     } on NotAPatientException catch (e) {
       setState(() => _errorMessage = e.message);
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {
-      setState(() => _errorMessage = 'Ocurrió un error inesperado. Intenta de nuevo.');
+      setState(
+        () => _errorMessage = 'Ocurrió un error inesperado. Intenta de nuevo.',
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -98,7 +100,11 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.health_and_safety, size: 56, color: Color(0xFF07866D)),
+                  const Icon(
+                    Icons.health_and_safety,
+                    size: 56,
+                    color: Color(0xFF07866D),
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'MediTrack',
@@ -155,12 +161,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: const Icon(Icons.lock_outline),
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+                      if (value == null || value.isEmpty)
+                        return 'Ingresa tu contraseña';
                       return null;
                     },
                   ),
@@ -192,7 +205,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Iniciar sesión', style: TextStyle(fontWeight: FontWeight.bold)),
+                          : const Text(
+                              'Iniciar sesión',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 16),

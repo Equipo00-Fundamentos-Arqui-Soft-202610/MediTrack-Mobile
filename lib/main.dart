@@ -10,6 +10,7 @@ import 'core/session/session_controller.dart';
 import 'firebase_options.dart';
 import 'package:meditrack_mobile/core/notifications/local_notification_service.dart';
 import 'package:meditrack_mobile/core/notifications/push_notification_service.dart';
+import 'package:meditrack_mobile/features/reminders/application/services/dose_reminder_coordinator.dart';
 import 'package:alarm/alarm.dart';
 
 @pragma('vm:entry-point')
@@ -24,7 +25,16 @@ void main() async {
 
   await Alarm.init();
   await LocalNotificationService.instance.initialize();
+  // Si la app se abrió porque el paciente tocó "Tomar dosis" en la
+  // notificación estando completamente cerrada, ni el callback en vivo ni el
+  // de background llegan a tiempo — hay que recuperarlo explícitamente antes
+  // de que Home cargue datos.
+  await LocalNotificationService.instance.handleColdStartLaunch();
   await PushNotificationService.instance.initialize();
+  // Reconstruye y reconcilia los ciclos de recordatorio persistidos (por
+  // ejemplo, tras un reinicio del dispositivo o un cierre completo de la
+  // app) antes de que la UI pida datos de Home.
+  await DoseReminderCoordinator.instance.initialize();
 
   final sessionController = SessionController();
   await sessionController.restoreSession();

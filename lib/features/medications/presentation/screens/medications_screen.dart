@@ -25,7 +25,9 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
 
     final patientId = context.read<SessionController>().patientId;
     _medicationsFuture = patientId == null
-        ? Future.error(ApiException(null, 'No se pudo determinar tu perfil de paciente.'))
+        ? Future.error(
+            ApiException(null, 'No se pudo determinar tu perfil de paciente.'),
+          )
         : _medicationService.getMedicationsByPatientId(patientId);
   }
 
@@ -54,10 +56,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
           ),
         ),
         actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: UserAvatar(),
-          ),
+          Padding(padding: EdgeInsets.only(right: 16), child: UserAvatar()),
         ],
       ),
       body: SafeArea(
@@ -184,7 +183,10 @@ class _MedicationsHeader extends StatelessWidget {
             Expanded(
               child: Text(
                 'Los medicamentos son registrados por el personal médico.',
-                style: const TextStyle(fontSize: 12.5, color: Color(0xFF5F6C72)),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: Color(0xFF5F6C72),
+                ),
               ),
             ),
           ],

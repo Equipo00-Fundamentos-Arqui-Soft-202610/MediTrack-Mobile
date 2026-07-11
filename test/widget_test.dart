@@ -20,7 +20,9 @@ class _NoopSessionStorage extends SessionStorage {
 }
 
 void main() {
-  testWidgets('Sin sesión guardada, arranca en Login', (WidgetTester tester) async {
+  testWidgets('Sin sesión guardada, arranca en Login', (
+    WidgetTester tester,
+  ) async {
     final sessionController = SessionController(storage: _NoopSessionStorage());
     await sessionController.restoreSession();
 

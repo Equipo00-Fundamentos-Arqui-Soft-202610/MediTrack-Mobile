@@ -1,7 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meditrack_mobile/core/notifications/push_notification_service.dart';
 import 'package:meditrack_mobile/core/session/session_controller.dart';
 import 'package:meditrack_mobile/core/session/session_storage.dart';
 import 'package:meditrack_mobile/features/auth/data/services/auth_service.dart';
+
+/// Fake sin Firebase: `PushNotificationService.instance` real dispara
+/// `FirebaseMessaging.instance` en su constructor, que revienta en
+/// `flutter test` sin `Firebase.initializeApp()`. Al inyectar este fake,
+/// `SessionController` nunca llega a tocar el singleton real.
+class _FakePushNotificationService implements PushNotificationService {
+  final List<int> subscribedPatientIds = [];
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> subscribeToPatientTopic(int patientId) async {
+    subscribedPatientIds.add(patientId);
+  }
+
+  @override
+  Future<void> unsubscribeFromPatientTopic(int patientId) async {}
+}
 
 /// MediTrack-Mobile es exclusivamente para pacientes: estos tests cubren el
 /// bloqueo de acceso completo (no solo ocultar pantallas) para cualquier
@@ -13,7 +33,10 @@ class _FakeAuthService extends AuthService {
   Map<String, dynamic>? profileResponse;
 
   @override
-  Future<Map<String, dynamic>> login({required String email, required String password}) async {
+  Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+  }) async {
     return loginResponse!;
   }
 
@@ -24,6 +47,8 @@ class _FakeAuthService extends AuthService {
     required String password,
     String rol = 'paciente',
     String? institucion,
+    String? dni,
+    DateTime? fechaNacimiento,
   }) async {
     return registerResponse!;
   }
@@ -43,7 +68,10 @@ class _InMemorySessionStorage extends SessionStorage {
   bool cleared = false;
 
   @override
-  Future<void> save({required String token, required Map<String, dynamic> user}) async {
+  Future<void> save({
+    required String token,
+    required Map<String, dynamic> user,
+  }) async {
     _token = token;
     _user = user;
     cleared = false;
@@ -69,14 +97,14 @@ Map<String, dynamic> _usuario({
   required String email,
   required String rol,
 }) => {
-      'id': id,
-      'nombre': nombre,
-      'email': email,
-      'rol': rol,
-      'institucion': null,
-      'phoneNumber': null,
-      'profilePhotoUrl': null,
-    };
+  'id': id,
+  'nombre': nombre,
+  'email': email,
+  'rol': rol,
+  'institucion': null,
+  'phoneNumber': null,
+  'profilePhotoUrl': null,
+};
 
 void main() {
   group('SessionController — acceso exclusivo para pacientes', () {
@@ -85,9 +113,18 @@ void main() {
       final authService = _FakeAuthService()
         ..loginResponse = {
           'accessToken': 'tok-paciente',
-          'usuario': _usuario(id: 1, nombre: 'Ana', email: 'ana@test.com', rol: 'paciente'),
+          'usuario': _usuario(
+            id: 1,
+            nombre: 'Ana',
+            email: 'ana@test.com',
+            rol: 'paciente',
+          ),
         };
-      final controller = SessionController(storage: storage, authService: authService);
+      final controller = SessionController(
+        storage: storage,
+        authService: authService,
+        pushNotificationService: _FakePushNotificationService(),
+      );
 
       await controller.login(email: 'ana@test.com', password: 'x');
 
@@ -96,79 +133,190 @@ void main() {
       expect(await storage.readToken(), 'tok-paciente');
     });
 
-    test('login con TechnicalStaff lanza NotAPatientException y no persiste sesión', () async {
-      final storage = _InMemorySessionStorage();
-      final authService = _FakeAuthService()
-        ..loginResponse = {
-          'accessToken': 'tok-staff',
-          'usuario': _usuario(id: 2, nombre: 'Tec', email: 'tec@test.com', rol: 'TechnicalStaff'),
-        };
-      final controller = SessionController(storage: storage, authService: authService);
+    test(
+      'login con TechnicalStaff lanza NotAPatientException y no persiste sesión',
+      () async {
+        final storage = _InMemorySessionStorage();
+        final authService = _FakeAuthService()
+          ..loginResponse = {
+            'accessToken': 'tok-staff',
+            'usuario': _usuario(
+              id: 2,
+              nombre: 'Tec',
+              email: 'tec@test.com',
+              rol: 'TechnicalStaff',
+            ),
+          };
+        final controller = SessionController(
+          storage: storage,
+          authService: authService,
+          pushNotificationService: _FakePushNotificationService(),
+        );
 
-      await expectLater(
-        controller.login(email: 'tec@test.com', password: 'x'),
-        throwsA(
-          isA<NotAPatientException>().having(
-            (e) => e.message,
-            'message',
-            SessionController.patientOnlyMessage,
+        await expectLater(
+          controller.login(email: 'tec@test.com', password: 'x'),
+          throwsA(
+            isA<NotAPatientException>().having(
+              (e) => e.message,
+              'message',
+              SessionController.patientOnlyMessage,
+            ),
           ),
-        ),
-      );
+        );
 
-      expect(controller.isAuthenticated, isFalse);
-      expect(await storage.readToken(), isNull);
-    });
+        expect(controller.isAuthenticated, isFalse);
+        expect(await storage.readToken(), isNull);
+      },
+    );
 
-    test('una sesión guardada de TechnicalStaff se purga al restaurar, con mensaje de bloqueo', () async {
-      final storage = _InMemorySessionStorage();
-      await storage.save(
-        token: 'tok-restored',
-        user: {..._usuario(id: 3, nombre: 'Doc', email: 'doc@test.com', rol: 'Doctor'), 'patientId': null},
-      );
-      final authService = _FakeAuthService()
-        ..profileResponse = _usuario(id: 3, nombre: 'Doc', email: 'doc@test.com', rol: 'Doctor');
-      final controller = SessionController(storage: storage, authService: authService);
+    test(
+      'una sesión guardada de TechnicalStaff se purga al restaurar, con mensaje de bloqueo',
+      () async {
+        final storage = _InMemorySessionStorage();
+        await storage.save(
+          token: 'tok-restored',
+          user: {
+            ..._usuario(
+              id: 3,
+              nombre: 'Doc',
+              email: 'doc@test.com',
+              rol: 'Doctor',
+            ),
+            'patientId': null,
+          },
+        );
+        final authService = _FakeAuthService()
+          ..profileResponse = _usuario(
+            id: 3,
+            nombre: 'Doc',
+            email: 'doc@test.com',
+            rol: 'Doctor',
+          );
+        final controller = SessionController(
+          storage: storage,
+          authService: authService,
+          pushNotificationService: _FakePushNotificationService(),
+        );
 
-      await controller.restoreSession();
+        await controller.restoreSession();
 
-      expect(controller.isAuthenticated, isFalse);
-      expect(storage.cleared, isTrue);
-      expect(controller.consumeBlockedMessage(), SessionController.patientOnlyMessage);
-      // Una vez consumido, no debe repetirse en un segundo chequeo.
-      expect(controller.consumeBlockedMessage(), isNull);
-    });
+        expect(controller.isAuthenticated, isFalse);
+        expect(storage.cleared, isTrue);
+        expect(
+          controller.consumeBlockedMessage(),
+          SessionController.patientOnlyMessage,
+        );
+        // Una vez consumido, no debe repetirse en un segundo chequeo.
+        expect(controller.consumeBlockedMessage(), isNull);
+      },
+    );
 
-    test('restoreSession con sesión de paciente guardada no bloquea nada', () async {
-      final storage = _InMemorySessionStorage();
-      await storage.save(
-        token: 'tok-ok',
-        user: {..._usuario(id: 4, nombre: 'Ana', email: 'ana@test.com', rol: 'paciente'), 'patientId': 4},
-      );
-      final authService = _FakeAuthService()
-        ..profileResponse = _usuario(id: 4, nombre: 'Ana', email: 'ana@test.com', rol: 'paciente');
-      final controller = SessionController(storage: storage, authService: authService);
+    test(
+      'restoreSession con sesión de paciente guardada no bloquea nada',
+      () async {
+        final storage = _InMemorySessionStorage();
+        await storage.save(
+          token: 'tok-ok',
+          user: {
+            ..._usuario(
+              id: 4,
+              nombre: 'Ana',
+              email: 'ana@test.com',
+              rol: 'paciente',
+            ),
+            'patientId': 4,
+          },
+        );
+        final authService = _FakeAuthService()
+          ..profileResponse = _usuario(
+            id: 4,
+            nombre: 'Ana',
+            email: 'ana@test.com',
+            rol: 'paciente',
+          );
+        final controller = SessionController(
+          storage: storage,
+          authService: authService,
+          pushNotificationService: _FakePushNotificationService(),
+        );
 
-      await controller.restoreSession();
+        await controller.restoreSession();
 
-      expect(controller.isAuthenticated, isTrue);
-      expect(storage.cleared, isFalse);
-      expect(controller.consumeBlockedMessage(), isNull);
-    });
+        expect(controller.isAuthenticated, isTrue);
+        expect(storage.cleared, isFalse);
+        expect(controller.consumeBlockedMessage(), isNull);
+      },
+    );
 
-    test('register siempre crea un paciente (rol forzado, sin selector en la UI)', () async {
-      final storage = _InMemorySessionStorage();
-      final authService = _FakeAuthService()
-        ..registerResponse = {
-          'accessToken': 'tok-nuevo',
-          'usuario': _usuario(id: 5, nombre: 'Nuevo', email: 'nuevo@test.com', rol: 'paciente'),
-        };
-      final controller = SessionController(storage: storage, authService: authService);
+    test(
+      'register siempre crea un paciente (rol forzado, sin selector en la UI)',
+      () async {
+        final storage = _InMemorySessionStorage();
+        final authService = _FakeAuthService()
+          ..registerResponse = {
+            'accessToken': 'tok-nuevo',
+            'usuario': _usuario(
+              id: 5,
+              nombre: 'Nuevo',
+              email: 'nuevo@test.com',
+              rol: 'paciente',
+            ),
+          };
+        final controller = SessionController(
+          storage: storage,
+          authService: authService,
+          pushNotificationService: _FakePushNotificationService(),
+        );
 
-      await controller.register(nombre: 'Nuevo', email: 'nuevo@test.com', password: '123456');
+        await controller.register(
+          nombre: 'Nuevo',
+          email: 'nuevo@test.com',
+          password: '123456',
+          dni: '12345678',
+          fechaNacimiento: DateTime(1995, 4, 12),
+        );
 
-      expect(controller.isAuthenticated, isTrue);
-      expect(controller.current!.isPaciente, isTrue);
-    });
+        expect(controller.isAuthenticated, isTrue);
+        expect(controller.current!.isPaciente, isTrue);
+      },
+    );
+
+    test(
+      'register envía dni y fechaNacimiento reales al backend y los guarda en la sesión',
+      () async {
+        final storage = _InMemorySessionStorage();
+        final authService = _FakeAuthService()
+          ..registerResponse = {
+            'accessToken': 'tok-dni',
+            'usuario': {
+              ..._usuario(
+                id: 6,
+                nombre: 'Con Dni',
+                email: 'condni@test.com',
+                rol: 'paciente',
+              ),
+              'dni': '87654321',
+              'fechaNacimiento': '1990-01-15T00:00:00.000',
+            },
+          };
+        final controller = SessionController(
+          storage: storage,
+          authService: authService,
+          pushNotificationService: _FakePushNotificationService(),
+        );
+
+        await controller.register(
+          nombre: 'Con Dni',
+          email: 'condni@test.com',
+          password: '123456',
+          dni: '87654321',
+          fechaNacimiento: DateTime(1990, 1, 15),
+        );
+
+        expect(controller.current!.dni, '87654321');
+        expect(controller.current!.fechaNacimiento, DateTime(1990, 1, 15));
+        expect(controller.current!.edad, isNotNull);
+      },
+    );
   });
 }

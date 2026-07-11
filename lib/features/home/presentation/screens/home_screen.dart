@@ -4,14 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:meditrack_mobile/core/network/api_exception.dart';
-import 'package:meditrack_mobile/core/alarms/medication_alarm_service.dart';
 import 'package:meditrack_mobile/core/constants/app_constants.dart';
 import 'package:meditrack_mobile/core/session/session_controller.dart';
 import 'package:meditrack_mobile/features/home/data/models/next_dose_model.dart';
 import 'package:meditrack_mobile/features/home/data/services/home_service.dart';
 import 'package:meditrack_mobile/features/home/domain/dose_visual_state.dart';
-import 'package:meditrack_mobile/features/medications/data/services/medication_service.dart';
-import 'package:meditrack_mobile/features/reminders/application/services/medication_alarm_scheduler.dart';
+import 'package:meditrack_mobile/features/reminders/application/services/dose_reminder_coordinator.dart';
+import 'package:meditrack_mobile/features/reminders/data/pending_dose_action_store.dart';
 import 'package:meditrack_mobile/shared/widgets/app_drawer_menu.dart';
 import 'package:meditrack_mobile/shared/widgets/user_avatar.dart';
 
@@ -19,9 +18,9 @@ class HomeScreen extends StatefulWidget {
   /// Inyectables solo para tests (widget tests con fakes); en producción
   /// siempre se usan las instancias reales por defecto.
   final HomeService? homeService;
-  final MedicationService? medicationService;
+  final DoseReminderCoordinator? reminderCoordinator;
 
-  const HomeScreen({super.key, this.homeService, this.medicationService});
+  const HomeScreen({super.key, this.homeService, this.reminderCoordinator});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -29,10 +28,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final HomeService _homeService = widget.homeService ?? HomeService();
-  late final MedicationService _medicationService = widget.medicationService ?? MedicationService();
-
-  late final MedicationAlarmScheduler _alarmScheduler =
-      MedicationAlarmScheduler(alarmService: MedicationAlarmService.instance);
+  late final DoseReminderCoordinator _reminderCoordinator =
+      widget.reminderCoordinator ?? DoseReminderCoordinator.instance;
 
   NextDoseModel? nextDose;
   double adherencePercentage = 0;
@@ -53,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _reminderCoordinator.addListener(_onReminderCoordinatorChanged);
     final patientId = context.read<SessionController>().patientId;
     if (patientId != null) {
       loadHomeData(patientId);
@@ -64,8 +62,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _reminderCoordinator.removeListener(_onReminderCoordinatorChanged);
     _doseWindowTimer?.cancel();
     super.dispose();
+  }
+
+  /// Se dispara cuando el coordinador cierra un ciclo como "no tomada":
+  /// redibuja para mostrar ese estado en la tarjeta.
+  void _onReminderCoordinatorChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  /// Si el paciente tocó la acción explícita "Tomar dosis" de la
+  /// notificación (foreground, background o app terminada — ver
+  /// `LocalNotificationService`/`PendingDoseActionStore`), abre
+  /// automáticamente la evidencia de esa dosis exacta al cargar Home.
+  Future<void> _openPendingEvidenceRequestIfAny(NextDoseModel? dose) async {
+    if (dose == null) return;
+    final matched = await PendingDoseActionStore.consumeIfMatches(
+      dose.doseScheduleId,
+      dose.scheduledAtUtc,
+    );
+    if (matched && mounted) {
+      await _openDoseEvidence();
+    }
   }
 
   /// Al volver de background (resume), se vuelve a consultar next-dose — sin
@@ -109,11 +130,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           'validationStatus=${d.validationStatus} rejectionReason=${d.rejectionReason}',
         );
       } else {
-        debugPrint('Home next-dose response -> null (404: sin próxima dosis para hoy)');
+        debugPrint(
+          'Home next-dose response -> null (404: sin próxima dosis para hoy)',
+        );
       }
     } on ApiException catch (error) {
       nextDoseError = error.message;
-      debugPrint('Home next-dose ApiException -> status=${error.statusCode} message=${error.message}');
+      debugPrint(
+        'Home next-dose ApiException -> status=${error.statusCode} message=${error.message}',
+      );
     } catch (error) {
       nextDoseError = 'No se pudo cargar la próxima dosis.';
       debugPrint('Home next-dose error inesperado -> $error');
@@ -136,12 +161,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     try {
-      final medications = await _medicationService.getMedicationsByPatientId(
-        patientId,
+      await _reminderCoordinator.ensureCycleForNextDose(
+        patientId: patientId,
+        nextDose: loadedDose,
       );
-      await _alarmScheduler.scheduleMedicationAlarms(medications);
     } catch (error) {
-      debugPrint('Medication alarms error: $error');
+      debugPrint('DoseReminderCoordinator error: $error');
     }
 
     if (!mounted) return;
@@ -153,6 +178,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
 
     _scheduleDoseWindowTimer();
+    await _openPendingEvidenceRequestIfAny(loadedDose);
   }
 
   /// Programa (a lo sumo un) timer para el próximo instante en que cambia el
@@ -175,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       nextBoundary = dose.scheduledAtUtc;
     } else {
       final windowEnd = dose.scheduledAtUtc.add(
-        const Duration(minutes: AppConstants.takeDoseToleranceMinutes),
+        const Duration(minutes: AppConstants.doseReminderCloseOffsetMinutes),
       );
       if (now.isBefore(windowEnd)) nextBoundary = windowEnd;
     }
@@ -183,11 +209,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (nextBoundary == null) return;
 
     final delay = nextBoundary.difference(now) + const Duration(seconds: 1);
-    debugPrint('Home: próxima transición de estado de dosis en ${delay.inSeconds}s (${nextBoundary.toIso8601String()})');
+    debugPrint(
+      'Home: próxima transición de estado de dosis en ${delay.inSeconds}s (${nextBoundary.toIso8601String()})',
+    );
 
     _doseWindowTimer = Timer(delay, () {
       if (!mounted) return;
-      debugPrint('Home: timer de ventana disparado, recomputando estado visual.');
+      debugPrint(
+        'Home: timer de ventana disparado, recomputando estado visual.',
+      );
       setState(() {}); // recalcula computeDoseState() dentro de build()
       _scheduleDoseWindowTimer(); // encadena el siguiente límite si aplica
     });
@@ -195,6 +225,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Abre la pantalla de captura/envío de evidencia en video. Al volver, si
   /// hubo algún cambio (video enviado, aprobado, rechazado), se recarga Home.
+  ///
+  /// Solo abre la pantalla — no cancela avisos ni marca nada. Los avisos
+  /// restantes del ciclo siguen programados hasta que el video se envíe con
+  /// éxito (o el backend confirme otro estado resolutivo).
   Future<void> _openDoseEvidence() async {
     final dose = nextDose;
     final patientId = context.read<SessionController>().patientId;
@@ -205,6 +239,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (changed == true && mounted) {
       await loadHomeData(patientId);
     }
+  }
+
+  void _dismissMissedDoseCard(int patientId) {
+    _reminderCoordinator.clearLastMissedDose();
+    loadHomeData(patientId);
   }
 
   @override
@@ -332,7 +371,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildNextDoseCard() {
     final dose = nextDose;
-    final cardState = computeDoseState(dose, DateTime.now().toUtc());
+    final missedDose = _reminderCoordinator.lastMissedDose;
+    final cardState = computeDoseState(
+      dose,
+      DateTime.now().toUtc(),
+      locallyMissedDose: missedDose,
+    );
 
     String title;
     String subtitle;
@@ -347,7 +391,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       title = 'No se pudo cargar tu dosis';
       subtitle = nextDoseError!;
       buttonLabel = 'Reintentar';
-      onPressed = () => loadHomeData(context.read<SessionController>().patientId!);
+      onPressed = () =>
+          loadHomeData(context.read<SessionController>().patientId!);
+    } else if (cardState.state == DoseVisualState.notTaken) {
+      // El backend ya no reporta esta ocurrencia (quedó correctamente
+      // excluida de next-dose al registrarse como "skipped"): se muestra con
+      // los datos que el coordinador confirmó localmente, una sola vez.
+      title = missedDose?.medicationName ?? 'Dosis no tomada';
+      subtitle =
+          'No se registró ninguna acción a tiempo. Se marcó como no tomada.';
+      buttonLabel = 'Ver próxima dosis';
+      onPressed = () =>
+          _dismissMissedDoseCard(context.read<SessionController>().patientId!);
     } else if (dose == null) {
       title = 'Sin dosis pendiente';
       subtitle = 'No tienes próxima dosis registrada';
@@ -355,6 +410,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       onPressed = null;
     } else {
       switch (cardState.state) {
+        case DoseVisualState.notTaken:
+          // Cubierto arriba: nunca se llega aquí con `dose` no nulo y
+          // `cardState.state == notTaken` porque ese caso ya retornó antes.
+          title = dose.medicationName;
+          subtitle = 'Dosis no tomada';
+          buttonLabel = 'Ver próxima dosis';
+          onPressed = null;
         case DoseVisualState.beforeWindow:
           title = dose.medicationName;
           subtitle = 'Próxima dosis: ${dose.scheduledTime}';
@@ -375,7 +437,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           subtitle = dose.rejectionReason?.isNotEmpty == true
               ? 'Evidencia rechazada: ${dose.rejectionReason}'
               : 'Evidencia rechazada';
-          buttonLabel = cardState.canRetry ? 'Volver a intentar' : 'Ventana finalizada';
+          buttonLabel = cardState.canRetry
+              ? 'Volver a intentar'
+              : 'Ventana finalizada';
           onPressed = cardState.canRetry ? _openDoseEvidence : null;
         case DoseVisualState.windowExpired:
           title = dose.medicationName;
@@ -404,10 +468,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               isErrorState
                   ? Icons.error_outline
                   : cardState.state == DoseVisualState.pendingValidation
-                      ? Icons.hourglass_top
-                      : cardState.state == DoseVisualState.rejected
-                          ? Icons.cancel_outlined
-                          : Icons.access_time_filled,
+                  ? Icons.hourglass_top
+                  : cardState.state == DoseVisualState.rejected
+                  ? Icons.cancel_outlined
+                  : cardState.state == DoseVisualState.notTaken
+                  ? Icons.event_busy
+                  : Icons.access_time_filled,
               color: const Color(0xFF07866D),
               size: 30,
             ),
@@ -428,7 +494,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: isErrorState ? const Color(0xFFB3261E) : const Color(0xFF4B5563),
+              color: isErrorState
+                  ? const Color(0xFFB3261E)
+                  : const Color(0xFF4B5563),
             ),
           ),
           const SizedBox(height: 18),
@@ -507,7 +575,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         value: progress.clamp(0, 1),
                         strokeWidth: 9,
                         backgroundColor: const Color(0xFFE5E7EB),
-                        valueColor: const AlwaysStoppedAnimation(Color(0xFF07866D)),
+                        valueColor: const AlwaysStoppedAnimation(
+                          Color(0xFF07866D),
+                        ),
                       ),
                       Center(
                         child: Text(
@@ -571,7 +641,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ),
                     if (hasLowStock)
-                      const Icon(Icons.warning, color: Color(0xFFE11D48), size: 18),
+                      const Icon(
+                        Icons.warning,
+                        color: Color(0xFFE11D48),
+                        size: 18,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -580,7 +654,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ? 'Stock bajo:\n${medication['officialName'] ?? medication['name']}'
                       : 'Stock\nsuficiente',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
